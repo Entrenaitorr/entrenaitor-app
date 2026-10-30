@@ -95,6 +95,11 @@
   .center{min-height:70vh;display:flex;flex-direction:column;justify-content:center}
   .spin{width:34px;height:34px;border:3px solid var(--line);border-top-color:var(--acc-txt);border-radius:50%;animation:rot 1s linear infinite;margin:0 auto}
   @keyframes rot{to{transform:rotate(360deg)}}
+  .install{background:#0a2628;border:1px solid #11484a;border-radius:14px;padding:12px 14px;margin:14px 0 4px;display:flex;flex-direction:column;gap:8px;color:#d6f1f1;font-size:14px;line-height:1.4}
+  .install b{color:#fff}
+  .install .row{display:flex;gap:8px;flex-wrap:wrap}
+  .install button{border:0;border-radius:10px;padding:9px 14px;font:600 14px Inter;cursor:pointer;background:var(--acc);color:#fff}
+  .install button.sec{background:transparent;color:#a9e2e3;border:1px solid #11484a}
   .err-box{background:#2a1212;border:1px solid #5a2323;color:#fca5a5;border-radius:12px;padding:10px 12px;font-size:14px;margin-top:12px}
 </style>
 </head>
@@ -157,6 +162,25 @@ function statusOf(d){ if (String(d.rpe).trim()!=="") return ["Completado","s-don
   const c = counts(d); return (c.done>0 || String(d.readiness).trim()!=="") ? ["En curso","s-prog"] : ["Pendiente","s-pend"]; }
 const domsHechas = d => Object.values(d.doms||{}).some(v=>String(v).trim()!=="");
 
+/* ========== Instalación como app ========== */
+let installEvt = null;
+window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); installEvt = e; if (D && !location.hash.match(/dia|agujetas/)) viewHome(); });
+window.addEventListener("appinstalled", () => { installEvt = null; try { localStorage.setItem("entrenaitor_inst_ok","1"); } catch(e){} });
+const UA = navigator.userAgent || "";
+const esStandalone = () => window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+const esSamsung = /SamsungBrowser/i.test(UA);
+const esIOS = /iPhone|iPad|iPod/i.test(UA);
+const instCerrado = () => { try { return localStorage.getItem("entrenaitor_inst_ok") === "1"; } catch(e){ return false; } };
+function installHTML(){
+  if (esStandalone() || instCerrado()) return "";
+  const close = `<button class="sec" id="instNo">Ahora no</button>`;
+  if (esSamsung) return `<div class="install"><span><b>Instala la app desde Google Chrome.</b> Desde este navegador (Samsung Internet) Android puede mostrar un aviso de seguridad. Copia el enlace, ábrelo en Chrome y pulsa "Instalar".</span><div class="row"><button id="instCopy">Copiar enlace</button>${close}</div></div>`;
+  if (esIOS) return `<div class="install"><span><b>Añádela a tu pantalla de inicio:</b> pulsa el botón Compartir de Safari y elige "Añadir a pantalla de inicio".</span><div class="row">${close}</div></div>`;
+  if (installEvt) return `<div class="install"><span><b>Instala la app</b> para tenerla en tu móvil como una más.</span><div class="row"><button id="instYes">Instalar</button>${close}</div></div>`;
+  return "";
+}
+function enlaceCliente(){ return location.origin + location.pathname + (CODE ? "?codigo=" + encodeURIComponent(CODE) : ""); }
+
 /* ========== Vistas ========== */
 function viewLogin(msg){
   app.innerHTML = `<div class="center">
@@ -175,6 +199,7 @@ function viewHome(){
   let h = `<div class="brand"><div class="logo" style="display:flex;align-items:center;gap:10px"><img src="${LOGO}" alt="" style="width:40px;height:40px;border-radius:10px"><img src="${WM}" alt="Entrenaitor" style="height:24px"></div><span class="pill">Semana ${w}</span></div>
   <h1>Hola, ${esc(D.cliente.split(" ")[0])} 👋</h1>
   <div class="mut small" style="margin-top:4px">Elige semana y día para entrenar</div>
+  ${installHTML()}
   <div class="weeks">${D.semanas.map(n=>`<button class="${n===w?'on':''}" data-week="${n}">Semana ${n}</button>`).join("")}</div>`;
   D.dias.forEach(d=>{
     const [st,cls] = statusOf(d), c = counts(d);
@@ -266,6 +291,10 @@ const diaActual = () => { const m = location.hash.match(/dia-(\d+)/); return m ?
 app.addEventListener("click", ev=>{
   const t = ev.target.closest("button"); if (!t) return;
   if (t.id === "entrar"){ const v = document.getElementById("cod").value.trim().toUpperCase(); if (!v) return; CODE = v; cargar(); return; }
+  if (t.id === "instYes" && installEvt){ installEvt.prompt(); installEvt.userChoice.finally(()=>{ installEvt = null; viewHome(); }); return; }
+  if (t.id === "instNo"){ try { localStorage.setItem("entrenaitor_inst_ok","1"); } catch(e){} viewHome(); return; }
+  if (t.id === "instCopy"){ const u = enlaceCliente();
+    (navigator.clipboard ? navigator.clipboard.writeText(u) : Promise.reject()).then(()=>toast("Enlace copiado. Pégalo en Chrome")).catch(()=>{ window.prompt("Copia este enlace y ábrelo en Chrome:", u); }); return; }
   if (t.id === "salir"){ store.del(); CODE = ""; D = null; location.hash = ""; viewLogin(); return; }
   if (t.dataset.go){ go(t.dataset.go); return; }
   if (t.dataset.week){ cargar(+t.dataset.week); return; }
