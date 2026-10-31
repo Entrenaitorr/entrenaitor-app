@@ -91,7 +91,7 @@
   .toast{position:fixed;top:calc(14px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);background:var(--acc);color:#fff;padding:9px 16px;border-radius:999px;font-weight:600;font-size:14px;opacity:0;transition:opacity .25s;pointer-events:none;z-index:20;max-width:90%;text-align:center}
   .toast.err{background:var(--err);color:#2a0606}
   .toast.show{opacity:1}
-  .sync{font-size:11.5px;color:var(--mut)} .sync.err{color:var(--err)}
+  .sync{font-size:11.5px;color:var(--mut)} .sync.err{color:var(--err)} .sync.pend{color:var(--warn)}
   .center{min-height:70vh;display:flex;flex-direction:column;justify-content:center}
   .spin{width:34px;height:34px;border:3px solid var(--line);border-top-color:var(--acc-txt);border-radius:50%;animation:rot 1s linear infinite;margin:0 auto}
   @keyframes rot{to{transform:rotate(360deg)}}
@@ -124,10 +124,35 @@ const WM = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMj
 const store = { get(){ try { return localStorage.getItem(KEY) || ""; } catch(e){ return ""; } },
                 set(v){ try { localStorage.setItem(KEY, v); } catch(e){} },
                 del(){ try { localStorage.removeItem(KEY); } catch(e){} } };
+function netErr(msg){ const e = new Error(msg || "Sin conexión"); e.red = true; return e; }
 function api(fn){ const args = [].slice.call(arguments,1);
   return fetch(API_URL, { method: "POST", body: JSON.stringify({ fn: fn, args: args }) })
-    .then(r => { if (!r.ok) throw new Error("Sin conexión con el servidor"); return r.json(); })
+    .catch(() => { throw netErr(); })
+    .then(r => { if (!r.ok) throw netErr("Sin conexión con el servidor"); return r.json(); })
     .then(j => { if (!j.ok) throw new Error(j.error || "Error"); return j.data; }); }
+
+/* ========== Cola sin conexión ==========
+   Si no hay cobertura, lo que apunta el cliente se guarda en el móvil
+   y se envía solo, en el mismo orden, cuando vuelve la conexión. */
+const QKEY = "entrenaitor_cola", CKEY = "entrenaitor_cache";
+function cola(){ try { return JSON.parse(localStorage.getItem(QKEY)) || []; } catch(e){ return []; } }
+function setCola(q){ try { localStorage.setItem(QKEY, JSON.stringify(q)); } catch(e){} }
+let vaciando = false;
+function vaciarCola(){
+  if (vaciando) return Promise.resolve();
+  const q = cola(); if (!q.length) { syncUI(); return Promise.resolve(); }
+  vaciando = true; syncUI();
+  const it = q[0];
+  return api(it.fn, it.code, ...it.args).then(() => {
+    setCola(cola().slice(1)); vaciando = false; return vaciarCola();
+  }).catch(e => {
+    vaciando = false;
+    if (!e.red) { setCola(cola().slice(1)); toast("Un dato no se pudo guardar: " + e.message, true); return vaciarCola(); }
+    syncUI();
+  });
+}
+window.addEventListener("online", () => vaciarCola());
+setInterval(() => { if (cola().length) vaciarCola(); }, 30000);
 
 let CODE = (CODIGO_URL || store.get() || "").toUpperCase();
 let D = null;          // datos de la semana actual
@@ -136,22 +161,43 @@ const app = document.getElementById("app");
 const esc = t => String(t==null?"":t).replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const cap = s => s ? s.charAt(0).toUpperCase()+s.slice(1) : s;
 
+function encolar(fn, args){ const q = cola(); q.push({ fn: fn, code: CODE, args: args, t: Date.now() }); setCola(q); guardarCache(); syncUI(); }
 function guardar(fn, ...args){
+  if (cola().length) { encolar(fn, args); vaciarCola(); return Promise.resolve(true); }
   pend++; syncUI();
-  return api(fn, CODE, ...args).then(r=>{ pend--; syncUI(); return r; })
-    .catch(e=>{ pend--; syncUI(true); toast("No se ha podido guardar. Revisa la conexión.", true); throw e; });
+  return api(fn, CODE, ...args).then(r=>{ pend--; syncUI(); guardarCache(); return r; })
+    .catch(e=>{ pend--;
+      if (e.red) { encolar(fn, args); toast("Sin cobertura: lo guardo en el móvil y lo envío al volver la conexión"); return true; }
+      syncUI(true); toast(e.message || "No se ha podido guardar", true); throw e; });
 }
 function syncUI(err){
   const el = document.getElementById("sync"); if (!el) return;
-  el.className = "sync" + (err ? " err" : "");
-  el.textContent = err ? "Error al guardar" : pend ? "Guardando…" : "Guardado ✓";
+  const n = cola().length;
+  el.className = "sync" + (err ? " err" : n ? " pend" : "");
+  el.textContent = err ? "Error al guardar" : n ? `Pendiente de enviar (${n})` : pend ? "Guardando…" : "Guardado ✓";
+}
+/* Copia de la última rutina cargada, para abrir la app sin cobertura */
+function guardarCache(){ if (!D) return; try { const c = JSON.parse(localStorage.getItem(CKEY)) || {}; c[CODE + "|" + D.semana] = D; c[CODE + "|ultima"] = D.semana; localStorage.setItem(CKEY, JSON.stringify(c)); } catch(e){} }
+function leerCache(semana){ try { const c = JSON.parse(localStorage.getItem(CKEY)) || {}; const w = semana || c[CODE + "|ultima"]; return w ? c[CODE + "|" + w] || null : null; } catch(e){ return null; } }
+/* Lo pendiente de enviar se superpone a lo que llega de la hoja, para que no "desaparezca" */
+function aplicarCola(d){
+  cola().filter(it => it.code === CODE && it.args[0] === d.semana).forEach(it => {
+    const dia = d.dias.find(x => x.n === it.args[1]); if (!dia) return;
+    if (it.fn === "guardarSerie") { const [ , , idx, j, reps, kg, rir] = it.args; const e = dia.ej.find(x => x.idx === idx); if (e) e.sets[j] = { reps, kg, rir }; }
+    if (it.fn === "guardarCampo") dia[it.args[2]] = it.args[3];
+    if (it.fn === "guardarAgujetas") Object.assign(dia.doms, it.args[2]);
+  });
+  return d;
 }
 
 /* ========== Carga ========== */
 function cargar(semana){
   app.innerHTML = `<div class="center"><div class="spin"></div><p class="mut small" style="text-align:center;margin-top:14px">Cargando tu rutina…</p></div>`;
-  return api("cargar", CODE, semana || null).then(d=>{ D = d; store.set(CODE); route(); })
-    .catch(e=>{ viewLogin(e && e.message ? e.message : "No se ha podido conectar"); });
+  return api("cargar", CODE, semana || null).then(d=>{ D = aplicarCola(d); store.set(CODE); guardarCache(); route(); vaciarCola(); })
+    .catch(e=>{
+      const c = e.red ? leerCache(semana) : null;
+      if (c) { D = aplicarCola(c); route(); toast("Sin conexión: te enseño la última versión guardada"); return; }
+      viewLogin(e && e.message ? (e.red ? "No hay conexión y aún no hay una rutina guardada en este móvil." : e.message) : "No se ha podido conectar"); });
 }
 
 /* ========== Utilidades de estado ========== */
@@ -200,6 +246,7 @@ function viewHome(){
   <h1>Hola, ${esc(D.cliente.split(" ")[0])} 👋</h1>
   <div class="mut small" style="margin-top:4px">Elige semana y día para entrenar</div>
   ${installHTML()}
+  ${cola().length ? `<div class="todo" style="background:#33290f;color:#fcd68a">⏳ Tienes ${cola().length} dato(s) pendientes de enviar. Se mandan solos cuando haya conexión.</div>` : ""}
   <div class="weeks">${D.semanas.map(n=>`<button class="${n===w?'on':''}" data-week="${n}">Semana ${n}</button>`).join("")}</div>`;
   D.dias.forEach(d=>{
     const [st,cls] = statusOf(d), c = counts(d);
