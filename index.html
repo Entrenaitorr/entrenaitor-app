@@ -169,6 +169,22 @@
   @keyframes sube{from{transform:translateY(40px);opacity:.4}to{transform:none;opacity:1}}
   @keyframes fade{from{opacity:0}to{opacity:1}}
   .chart{width:100%;height:auto;display:block;margin-top:6px}
+  .refresco{position:fixed;top:calc(10px + env(safe-area-inset-top));right:12px;z-index:30;display:flex;align-items:center;gap:7px;background:#121a1d;border:1px solid var(--line);color:var(--mut);font-size:12px;padding:6px 11px;border-radius:999px;opacity:0;transform:translateY(-6px);transition:opacity .2s,transform .2s;pointer-events:none}
+  .refresco.on{opacity:1;transform:none}
+  body.onb .tabbar{display:none}
+  .onb-wrap{min-height:calc(100vh - 60px);display:flex;flex-direction:column;justify-content:center;padding:20px 0}
+  .onb-ico{width:84px;height:84px;border-radius:24px;background:#0a2628;border:1px solid #11484a;display:flex;align-items:center;justify-content:center;color:var(--acc-txt);margin:0 0 22px}
+  .onb-ico svg{width:42px;height:42px}
+  .onb-wrap h1{font-size:34px;line-height:1.05;margin-bottom:10px}
+  .onb-wrap p{color:#c3cbd0;font-size:15.5px;line-height:1.55;margin:0 0 8px}
+  .onb-list{margin:14px 0 0;padding:0;list-style:none}
+  .onb-list li{display:flex;gap:10px;align-items:flex-start;font-size:14.5px;line-height:1.45;margin:9px 0;color:#c3cbd0}
+  .onb-list li b{color:var(--txt)}
+  .onb-list li::before{content:"";flex:0 0 8px;height:8px;border-radius:50%;background:var(--acc-txt);margin-top:7px}
+  .dots{display:flex;gap:7px;justify-content:center;margin:26px 0 4px}
+  .dots i{width:8px;height:8px;border-radius:99px;background:var(--line);transition:all .2s}
+  .dots i.on{width:24px;background:var(--acc-txt)}
+  .onb-skip{display:block;margin:12px auto 0;background:none;border:0;color:var(--mut);font:500 14px Inter;cursor:pointer}
   .coachbar{position:sticky;top:0;z-index:25;display:flex;align-items:center;gap:10px;background:#3a2c00;color:#ffe08a;border-bottom:1px solid #6b5200;padding:calc(8px + env(safe-area-inset-top)) 14px 8px;font-size:13px}
   .coachbar[hidden]{display:none}
   .coachbar b{color:#fff}
@@ -323,17 +339,31 @@ function aplicarCola(d){
 
 /* ========== Carga ========== */
 function cargar(semana){
-  app.innerHTML = `<div class="center"><div class="spin"></div><p class="mut small" style="text-align:center;margin-top:14px">Cargando tu rutina…</p></div>`;
+  // Si hay una copia guardada en el móvil, se enseña al instante y se actualiza por detrás (Google tarda unos segundos)
+  const copia = !COACH && !semana ? leerCache(null) : null;
+  let mostrada = false;
+  if (copia && !D) { D = aplicarCola(copia); mostrada = true; route(); actualizandoUI(true); }
+  else app.innerHTML = `<div class="center"><div class="spin"></div><p class="mut small" style="text-align:center;margin-top:14px">Cargando tu rutina…</p></div>`;
   return api("cargar", CODE, semana || null).then(d=>{
+      actualizandoUI(false);
       if (d && d.coach) { COACH = CODE; store.set(CODE); D = null; viewCoach(); return; }
-      D = COACH ? d : aplicarCola(d); if (!COACH) store.set(CODE); guardarCache(); if (!BASC) BASC = leerBasc(); route(); vaciarCola();
+      D = COACH ? d : aplicarCola(d); if (!COACH) store.set(CODE);
+      guardarCache(); if (!BASC) BASC = leerBasc();
+      const escribiendo = mostrada && document.activeElement && /^(INPUT|TEXTAREA)$/.test(document.activeElement.tagName);
+      if (!escribiendo) { const y = window.scrollY; route(); if (mostrada) window.scrollTo(0, y); }
+      vaciarCola();
       const antes = ctaCheckin();
       refrescarBasc().then(() => { const enInicio = !location.hash.replace("#","") || location.hash === "#inicio"; if (enInicio && ctaCheckin() !== antes) { const y = window.scrollY; viewHome(); window.scrollTo(0, y); } }).catch(()=>{}); })
     .catch(e=>{
+      actualizandoUI(false);
+      if (mostrada) { if (e.red) toast("Sin conexión: te enseño la última versión guardada"); else if (/no válido|no está activo/i.test(e.message || "")) { D = null; viewLogin(e.message); } return; }
       const c = e.red ? leerCache(semana) : null;
       if (c) { D = aplicarCola(c); route(); toast("Sin conexión: te enseño la última versión guardada"); return; }
       viewLogin(e && e.message ? (e.red ? "No hay conexión y aún no hay una rutina guardada en este móvil." : e.message) : "No se ha podido conectar"); });
 }
+function actualizandoUI(on){ let el = document.getElementById("refresco");
+  if (!el) { el = document.createElement("div"); el.id = "refresco"; el.className = "refresco"; el.innerHTML = '<span class="spin" style="width:14px;height:14px;border-width:2px;margin:0"></span>Actualizando…'; document.body.appendChild(el); }
+  el.classList.toggle("on", !!on); }
 
 /* ========== Utilidades de estado ========== */
 const dia = n => D.dias.find(x=>x.n===n);
@@ -674,6 +704,51 @@ function abrirCliente(c){
 function volverACoach(){ CODE = COACH; COACH_NOMBRE = ""; D = null; PROG = null; BASC = null; viewCoach(); window.scrollTo(0, 0); }
 document.getElementById("coachCambiar").addEventListener("click", volverACoach);
 
+/* ========== Primera vez: privacidad (una vez por cliente) y bienvenida (una vez por móvil) ========== */
+const ICO = {
+  lock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/><path d="M12 14.5v2.5"/></svg>',
+  pesa: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 7v10M18 7v10M3 10v4M21 10v4M6 12h12"/></svg>',
+  prog: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17l5-5 4 3 8-8"/><path d="M15 7h5v5"/></svg>',
+  chat: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-12.6 7.3L3 20l1.3-5.1A8.5 8.5 0 1 1 21 11.5z"/></svg>' };
+const privLocal = () => { try { return !!(JSON.parse(localStorage.getItem("entrenaitor_priv")) || {})[CODE]; } catch(e){ return false; } };
+function marcarPrivLocal(){ try { const o = JSON.parse(localStorage.getItem("entrenaitor_priv")) || {}; o[CODE] = new Date().toISOString(); localStorage.setItem("entrenaitor_priv", JSON.stringify(o)); } catch(e){} }
+const bienvenidaVista = () => { try { return !!localStorage.getItem("entrenaitor_bienvenida"); } catch(e){ return true; } };
+function necesitaPrivacidad(){ return !COACH && D && D.privacidad === "" && !privLocal(); }
+function viewPrivacidad(){
+  document.body.classList.add("onb");
+  app.innerHTML = `<div class="onb-wrap">
+    <div class="onb-ico">${ICO.lock}</div>
+    <h1>Tus datos, en buenas manos</h1>
+    <p>Para registrar tu entrenamiento y que veas tu progreso, la app guarda en tu ficha de Aitor:</p>
+    <ul class="onb-list">
+      <li><span><b>Tu entrenamiento:</b> series, cargas, RIR, readiness, esfuerzo, agujetas y notas.</span></li>
+      <li><span><b>Tus medidas corporales</b>, si las apuntas: peso, % de grasa, masa muscular, IMC, grasa visceral y agua.</span></li>
+      <li><span><b>Solo los veis tú y Aitor.</b> Se usan únicamente para seguir y ajustar tu entrenamiento, y puedes pedir que se borren cuando quieras.</span></li>
+    </ul>
+    <button class="btn" id="aceptoPriv" style="margin-top:22px">Acepto y quiero empezar</button>
+    <a class="onb-skip" href="${esc(waLink(`Hola Aitor, soy ${nombreCliente()}. Tengo una duda sobre cómo se guardan mis datos en la app: `))}" target="_blank" rel="noopener" style="text-align:center;text-decoration:none">Tengo dudas, prefiero preguntar a Aitor</a>
+  </div>`;
+}
+const PASOS = [
+  { i: "pesa", t: "Tu entreno, serie a serie", p: "En <b>Entrenos</b> tienes tu rutina de cada semana. Apunta reps, kilos y RIR de cada serie, y al terminar, cómo te has sentido. Llega solo a la ficha de Aitor." },
+  { i: "prog", t: "Mira cómo avanzas", p: "En <b>Progreso</b> verás tu fuerza estimada en cada ejercicio y, si te pesas cada semana, la evolución de tu cuerpo." },
+  { i: "chat", t: "Aitor, a un toque", p: "En <b>Chat</b> le escribes por WhatsApp cuando tengas una duda. En <b>Nutrición</b> puedes calcular tus calorías y macros." } ];
+let PASO = 0;
+function viewBienvenida(){
+  document.body.classList.add("onb");
+  const x = PASOS[PASO], ult = PASO === PASOS.length - 1;
+  app.innerHTML = `<div class="onb-wrap">
+    ${PASO === 0 ? `<img src="${WM}" alt="Entrenaitor" style="width:210px;margin:0 0 30px">` : ""}
+    <div class="onb-ico">${ICO[x.i]}</div>
+    <h1>${x.t}</h1>
+    <p>${x.p}</p>
+    <div class="dots">${PASOS.map((_, k) => `<i class="${k === PASO ? "on" : ""}"></i>`).join("")}</div>
+    <button class="btn" id="onbNext">${ult ? "Empezar a entrenar" : "Siguiente"}</button>
+    ${ult ? "" : `<button class="onb-skip" id="onbSkip">Saltar</button>`}
+  </div>`;
+}
+function terminarBienvenida(){ try { localStorage.setItem("entrenaitor_bienvenida", "1"); } catch(e){} PASO = 0; document.body.classList.remove("onb"); location.hash = ""; route(); }
+
 /* ========== Vistas ========== */
 function viewLogin(msg){
   app.innerHTML = `<div class="center">
@@ -800,6 +875,9 @@ function route(){
   document.body.style.overflow = "";
   tabbarUI(); coachUI();
   if (!D) { if (COACH) viewCoach(); return; }
+  if (necesitaPrivacidad()) { tabbarUI(); viewPrivacidad(); return; }
+  if (!COACH && !bienvenidaVista()) { viewBienvenida(); return; }
+  document.body.classList.remove("onb");
   const hsh = location.hash.replace("#",""); let m;
   if ((m = hsh.match(/^dia-(\d+)$/))) viewDay(+m[1]);
   else if ((m = hsh.match(/^agujetas-(\d+)$/))) viewDoms(+m[1]);
@@ -819,6 +897,12 @@ app.addEventListener("click", ev=>{
   if (ev.target.id === "prSheet") { abrirSheet(false); return; }
   const t = ev.target.closest("button"); if (!t) return;
   if (t.id === "pr-pick") { abrirSheet(true); return; }
+  if (t.id === "aceptoPriv") { t.disabled = true; marcarPrivLocal(); D.privacidad = "app";
+    const fin = () => route();
+    if (navigator.onLine) api("aceptarPrivacidad", CODE).then(fin).catch(() => { encolar("aceptarPrivacidad", []); fin(); }); else { encolar("aceptarPrivacidad", []); fin(); }
+    return; }
+  if (t.id === "onbNext") { if (PASO < PASOS.length - 1) { PASO++; viewBienvenida(); } else terminarBienvenida(); return; }
+  if (t.id === "onbSkip") { terminarBienvenida(); return; }
   if (t.dataset.cli != null && CLIENTES) { const c = CLIENTES[+t.dataset.cli]; if (c) abrirCliente(c); return; }
   if (t.dataset.met) { CUERPO_SEL = t.dataset.met; pintarCuerpo(); return; }
   if (t.id === "saveCheckin") { guardarCheckin(t); return; }
