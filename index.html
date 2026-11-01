@@ -119,7 +119,7 @@
   .desglose{display:grid;gap:6px;font-size:14px;color:var(--mut)}
   .desglose div{display:flex;justify-content:space-between}
   .desglose b{color:var(--txt)}
-  .tabbar{position:fixed;left:0;right:0;bottom:0;z-index:20;background:rgba(11,16,18,.96);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-top:1px solid var(--line);padding:6px 8px calc(6px + env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
+  .tabbar{position:fixed;left:0;right:0;bottom:0;z-index:20;background:rgba(11,16,18,.96);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-top:1px solid var(--line);padding:6px 8px calc(6px + env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(4,minmax(0,1fr))}
   .tabbar[hidden]{display:none}
   .tab{display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 0;border:0;background:none;color:var(--mut);font:600 11.5px Inter;text-decoration:none;cursor:pointer;border-radius:12px;max-width:140px;margin:0 auto;width:100%}
   .tab svg,.tab img{width:26px;height:26px}
@@ -128,6 +128,13 @@
   .tab.on{color:var(--acc-txt)}
   .tab.on .pill-ico{background:#0a2628}
   .pill-ico{display:flex;align-items:center;justify-content:center;width:52px;height:30px;border-radius:999px}
+  .chart{width:100%;height:auto;display:block;margin-top:6px}
+  .stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:12px 0}
+  .stat{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:11px 12px}
+  .stat small{display:block;color:var(--mut);font-size:12px}
+  .stat b{display:block;font:700 26px "Barlow Condensed",sans-serif;margin-top:2px}
+  .stat i{font-style:normal;font-size:12.5px;color:var(--mut)}
+  .stat i.up{color:var(--acc-txt)}
   .menu-wrap{position:relative}
   .menu-btn{display:flex;align-items:center;gap:10px;background:none;border:0;padding:0;cursor:pointer;color:var(--mut)}
   .menu-btn .chev{transition:transform .2s}
@@ -153,6 +160,7 @@
 <div class="toast" id="toast"></div>
 <nav class="tabbar" id="tabbar" hidden aria-label="Secciones">
   <button class="tab" data-tab="inicio"><span class="pill-ico"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 7v10M18 7v10M3 10v4M21 10v4M6 12h12"/></svg></span>Entrenos</button>
+  <button class="tab" data-tab="progreso"><span class="pill-ico"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l5-5 4 3 8-8"/><path d="M15 7h5v5"/></svg></span>Progreso</button>
   <button class="tab" data-tab="nutricion"><span class="pill-ico"><img src="icons/nutricion.svg" alt=""></span>Nutrición</button>
   <a class="tab" id="tabWa" href="#" target="_blank" rel="noopener"><span class="pill-ico"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-12.6 7.3L3 20l1.3-5.1A8.5 8.5 0 1 1 21 11.5z"/></svg></span>Aitor</a>
 </nav>
@@ -364,6 +372,68 @@ function viewNutri(){
 }
 function nutriActualizar(){ const r = document.getElementById("nres"); if (r) r.innerHTML = nutriResultadoHTML(nutriDatos()); }
 
+/* ========== Progreso (RM estimado) ==========
+   Lee la pestaña "Datos de rendimiento" de la hoja del cliente, que Aitor
+   actualiza con el botón del Sheets. Mismos números que sus gráficas. */
+const PKEY = "entrenaitor_progreso";
+let PROG = null, PROG_SEL = "", PROG_ERR = "";
+function leerProg(){ try { return (JSON.parse(localStorage.getItem(PKEY)) || {})[CODE] || null; } catch(e){ return null; } }
+function guardarProg(p){ try { const c = JSON.parse(localStorage.getItem(PKEY)) || {}; c[CODE] = p; localStorage.setItem(PKEY, JSON.stringify(c)); } catch(e){} }
+const ejCorto = t => String(t).split(" - ")[0].trim();
+const kg1 = v => (Math.round(v * 10) / 10).toLocaleString("es-ES");
+function viewProgreso(){
+  if (!PROG) PROG = leerProg();
+  pintarProgreso();
+  api("progreso", CODE).then(p => { PROG = p || []; PROG_ERR = ""; guardarProg(PROG); if (location.hash === "#progreso") pintarProgreso(); })
+    .catch(e => { PROG_ERR = e.red ? "Sin conexión: mostrando los últimos datos guardados." : e.message; if (location.hash === "#progreso") pintarProgreso(); });
+}
+function graficaRM(p){
+  const W = 340, H = 190, L = 34, R = 14, T = 22, B = 26;
+  const vals = p.map(x => x[1]), mx = Math.max.apply(null, vals), mn = Math.min.apply(null, vals);
+  const lo = Math.max(0, mn - (mx - mn) * 0.25 - 2), hi = mx + (mx - mn) * 0.12 + 2;
+  const X = i => p.length === 1 ? (L + W - R) / 2 : L + i * (W - L - R) / (p.length - 1);
+  const Y = v => T + (H - T - B) * (1 - (v - lo) / (hi - lo));
+  const iMax = vals.indexOf(mx), cada = p.length > 10 ? 2 : 1;
+  let g = `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="RM estimado por semana">`;
+  [lo, (lo + hi) / 2, hi].forEach(v => { g += `<line x1="${L}" x2="${W - R}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--line)"/><text x="${L - 6}" y="${Y(v) + 4}" text-anchor="end" font-size="11" fill="var(--mut)">${Math.round(v)}</text>`; });
+  if (p.length > 1) g += `<polyline fill="none" stroke="var(--acc)" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" points="${p.map((x, i) => X(i) + "," + Y(x[1])).join(" ")}"/>`;
+  p.forEach((x, i) => {
+    const best = i === iMax, last = i === p.length - 1;
+    g += `<circle cx="${X(i)}" cy="${Y(x[1])}" r="${best ? 6 : 4}" fill="${best ? "#ffffff" : "var(--acc-txt)"}"/>`;
+    if (best || last || i === 0) g += `<text x="${X(i)}" y="${Y(x[1]) - 10}" text-anchor="middle" font-size="11.5" font-weight="600" fill="var(--txt)">${kg1(x[1])}</text>`;
+    if (i % cada === 0 || last) g += `<text x="${X(i)}" y="${H - 6}" text-anchor="middle" font-size="11" fill="var(--mut)">S${x[0]}</text>`;
+  });
+  return g + `</svg>`;
+}
+function pintarProgreso(){
+  let h = `<div class="brand"><h1>Progreso</h1></div>
+  <div class="mut small">Tu RM estimado por semana: el peso que podrías levantar a 1 repetición, calculado con tus series.</div>`;
+  if (PROG_ERR) h += `<div class="err-box">${esc(PROG_ERR)}</div>`;
+  if (!PROG) { app.innerHTML = h + `<div class="card" style="text-align:center;padding:30px"><div class="spin"></div></div>`; return; }
+  const lista = PROG.filter(e => e.p && e.p.length);
+  if (!lista.length) {
+    app.innerHTML = h + `<div class="card"><b>Aún no hay datos de progreso</b><p class="mut small" style="margin:6px 0 0;line-height:1.5">Aparecerán aquí cuando Aitor actualice tus datos de rendimiento al cerrar la semana.</p></div>`;
+    return;
+  }
+  let e = lista.find(x => x.ej === PROG_SEL);
+  if (!e) { e = lista.find(x => x.p.length > 1) || lista[0]; PROG_SEL = e.ej; }
+  const p = e.p, ult = p[p.length - 1], pri = p[0];
+  const best = p.reduce((a, x) => x[1] > a[1] ? x : a, p[0]);
+  const pct = p.length > 1 && pri[1] > 0 ? Math.round((ult[1] - pri[1]) / pri[1] * 100) : null;
+  const baja = p.length > 1 && ult[1] < p[p.length - 2][1];
+  const duda = waLink(`Hola Aitor, soy ${nombreCliente()}. Tengo una duda con mi progreso en "${ejCorto(e.ej)}": `);
+  h += `<label class="lb" for="pr-ej">Ejercicio</label>
+  <select class="txt" id="pr-ej">${lista.map(x => `<option value="${esc(x.ej)}" ${x.ej === e.ej ? "selected" : ""}>${esc(ejCorto(x.ej))}</option>`).join("")}</select>
+  <div class="stats">
+    <div class="stat"><small>RM estimado</small><b>${kg1(ult[1])} kg</b><i class="${pct > 0 ? "up" : ""}">${pct === null ? "Semana " + ult[0] : (pct > 0 ? "+" : "") + pct + " % desde la semana " + pri[0]}</i></div>
+    <div class="stat"><small>Mejor marca</small><b>${kg1(best[1])} kg</b><i>Semana ${best[0]}</i></div>
+  </div>
+  <div class="card">${graficaRM(p)}</div>
+  ${baja ? `<p class="mut small" style="line-height:1.5">Esta semana ha bajado un poco. Es normal en semanas de descarga o con más fatiga acumulada.</p>` : ""}
+  <a class="wa" href="${esc(duda)}" target="_blank" rel="noopener">${WA_ICON}Pregunta a Aitor por tu progreso</a>`;
+  app.innerHTML = h;
+}
+
 /* ========== Vistas ========== */
 function viewLogin(msg){
   app.innerHTML = `<div class="center">
@@ -466,7 +536,7 @@ function tabbarUI(){
   nav.hidden = !D;
   if (!D) return;
   const hsh = location.hash.replace("#","");
-  const actual = hsh === "nutricion" ? "nutricion" : "inicio";
+  const actual = (hsh === "nutricion" || hsh === "progreso") ? hsh : "inicio";
   nav.querySelectorAll("[data-tab]").forEach(b => { const on = b.dataset.tab === actual; b.classList.toggle("on", on); if (on) b.setAttribute("aria-current","page"); else b.removeAttribute("aria-current"); });
   document.getElementById("tabWa").href = waGeneral();
 }
@@ -478,6 +548,7 @@ function route(){
   if ((m = hsh.match(/^dia-(\d+)$/))) viewDay(+m[1]);
   else if ((m = hsh.match(/^agujetas-(\d+)$/))) viewDoms(+m[1]);
   else if (hsh === "nutricion") viewNutri();
+  else if (hsh === "progreso") viewProgreso();
   else viewHome();
   window.scrollTo(0,0);
 }
@@ -485,6 +556,7 @@ function go(h){ if (location.hash === "#"+h) route(); else location.hash = h; }
 const diaActual = () => { const m = location.hash.match(/dia-(\d+)/); return m ? +m[1] : null; };
 
 /* ========== Interacción ========== */
+app.addEventListener("change", ev=>{ if (ev.target.id === "pr-ej") { PROG_SEL = ev.target.value; pintarProgreso(); } });
 app.addEventListener("click", ev=>{
   const t = ev.target.closest("button"); if (!t) return;
   if (t.id === "entrar"){ const v = document.getElementById("cod").value.trim().toUpperCase(); if (!v) return; CODE = v; cargar(); return; }
@@ -494,7 +566,7 @@ app.addEventListener("click", ev=>{
   if (t.id === "instNo"){ try { localStorage.setItem("entrenaitor_inst_ok","1"); } catch(e){} viewHome(); return; }
   if (t.id === "instCopy"){ const u = enlaceCliente();
     (navigator.clipboard ? navigator.clipboard.writeText(u) : Promise.reject()).then(()=>toast("Enlace copiado. Pégalo en Chrome")).catch(()=>{ window.prompt("Copia este enlace y ábrelo en Chrome:", u); }); return; }
-  if (t.id === "salir"){ store.del(); CODE = ""; D = null; location.hash = ""; tabbarUI(); viewLogin(); return; }
+  if (t.id === "salir"){ store.del(); CODE = ""; D = null; PROG = null; PROG_SEL = ""; location.hash = ""; tabbarUI(); viewLogin(); return; }
   if (t.dataset.go){ go(t.dataset.go); return; }
   if (t.dataset.week){ cargar(+t.dataset.week); return; }
   const n = diaActual(), d = n && dia(n);
