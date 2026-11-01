@@ -169,6 +169,30 @@
   @keyframes sube{from{transform:translateY(40px);opacity:.4}to{transform:none;opacity:1}}
   @keyframes fade{from{opacity:0}to{opacity:1}}
   .chart{width:100%;height:auto;display:block;margin-top:6px}
+  .free{display:block;font-size:12.5px;color:#a9e2e3;background:#0a2628;border:1px solid #11484a;border-radius:12px;padding:9px 12px;margin:10px 0}
+  .free b{color:#fff}
+  .lock{position:relative;overflow:hidden;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;margin:10px 0}
+  .lock h3{display:flex;align-items:center;gap:8px;font:700 19px "Barlow Condensed",sans-serif;letter-spacing:.02em;margin:0 0 4px}
+  .lock h3 svg{color:#f4c24d;flex:0 0 auto}
+  .lock p{color:var(--mut);font-size:13.5px;line-height:1.5;margin:0}
+  .lock .blur{filter:blur(5px);opacity:.55;pointer-events:none;margin-top:10px}
+  .lock-cta{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;margin-top:12px;border:0;border-radius:12px;padding:12px;background:var(--acc);color:#fff;font:700 15px Inter;text-decoration:none}
+  .ses{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin:8px 0;color:var(--txt);cursor:pointer;font:inherit}
+  .ses .d{flex:0 0 46px;text-align:center;background:#0a2628;border-radius:10px;padding:6px 0;color:var(--acc-txt);font:700 20px "Barlow Condensed",sans-serif;line-height:1}
+  .ses .d small{display:block;font:600 10.5px Inter;color:#a9e2e3;margin-top:2px;text-transform:uppercase}
+  .ses .t{flex:1;min-width:0}
+  .ses b{display:block;font-size:14.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .ses .t small{display:block;color:var(--mut);font-size:12.5px;margin-top:2px}
+  .iex{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px;margin:10px 0}
+  .iex-top{display:flex;gap:8px;align-items:center}
+  .iex-top input{flex:1;font-weight:600}
+  .iset{display:grid;grid-template-columns:34px 1fr 1fr 34px;gap:8px;align-items:center;margin-top:8px}
+  .iset span{color:var(--mut);font:700 16px "Barlow Condensed",sans-serif;text-align:center}
+  .iset input{text-align:center}
+  .ix{width:34px;height:34px;border-radius:10px;border:1px solid var(--line);background:var(--card2);color:var(--mut);font-size:16px;cursor:pointer;padding:0}
+  .ihead{display:grid;grid-template-columns:34px 1fr 1fr 34px;gap:8px;margin-top:10px;color:var(--mut);font-size:12px;text-align:center}
+  .iadd{border:1px dashed #2b3a41;background:none;color:var(--acc-txt);border-radius:10px;padding:9px 12px;font:600 13.5px Inter;cursor:pointer;margin-top:10px}
+  .inv-check{display:flex;gap:10px;align-items:flex-start;font-size:12.5px;line-height:1.5;color:var(--mut);margin-top:14px}
   .refresco{position:fixed;top:calc(10px + env(safe-area-inset-top));right:12px;z-index:30;display:flex;align-items:center;gap:7px;background:#121a1d;border:1px solid var(--line);color:var(--mut);font-size:12px;padding:6px 11px;border-radius:999px;opacity:0;transform:translateY(-6px);transition:opacity .2s,transform .2s;pointer-events:none}
   .refresco.on{opacity:1;transform:none}
   body.onb .tabbar{display:none}
@@ -354,6 +378,7 @@ function cargar(semana){
   return api("cargar", CODE, semana || null).then(d=>{
       actualizandoUI(false);
       if (d && d.coach) { COACH = CODE; store.set(CODE); D = null; viewCoach(); return; }
+      if (d && d.invitado) { D = null; viewInvAlta(); return; }
       D = LECTURA() ? d : aplicarCola(d); if (!COACH) store.set(CODE);
       guardarCache(); if (!BASC) BASC = leerBasc();
       const escribiendo = mostrada && document.activeElement && /^(INPUT|TEXTAREA)$/.test(document.activeElement.tagName);
@@ -382,7 +407,7 @@ const domsHechas = d => Object.values(d.doms||{}).some(v=>String(v).trim()!=="")
 
 /* ========== Instalación como app ========== */
 let installEvt = null;
-window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); installEvt = e; if (D && !location.hash.match(/dia|agujetas/)) viewHome(); });
+window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); installEvt = e; if (D && !location.hash.match(/dia|agujetas|inv-/)) route(); });
 window.addEventListener("appinstalled", () => { installEvt = null; try { localStorage.setItem("entrenaitor_inst_ok","1"); } catch(e){} });
 const UA = navigator.userAgent || "";
 const esStandalone = () => window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
@@ -397,7 +422,7 @@ function installHTML(){
   if (installEvt) return `<div class="install"><span><b>Instala la app</b> para tenerla en tu móvil como una más.</span><div class="row"><button id="instYes">Instalar</button>${close}</div></div>`;
   return "";
 }
-function enlaceCliente(){ return location.origin + location.pathname + (CODE ? "?codigo=" + encodeURIComponent(CODE) : ""); }
+function enlaceCliente(){ const c = INVITADO ? INVITADO.codigo : CODE; return location.origin + location.pathname + (c ? "?codigo=" + encodeURIComponent(c) : ""); }
 
 /* ========== WhatsApp con el entrenador ========== */
 const WA_NUM = "34620772316";
@@ -660,7 +685,7 @@ function guardarCheckin(btn){
 /* ========== Modo entrenador ==========
    Entrando con el código de la pestaña "Entrenador" del panel: lista de clientes,
    cuándo usaron la app por última vez y acceso a la app de cada uno en solo lectura. */
-let CLIENTES = null;
+let CLIENTES = null, NINV = 0;
 function haceTxt(iso){
   if (!iso) return "";
   const dias = Math.floor((Date.now() - new Date(iso).getTime()) / 864e5);
@@ -687,7 +712,7 @@ function viewCoach(){
   if (location.hash) history.replaceState(null, "", location.pathname + location.search);
   pintarCoach();
   const codigo = CODE;
-  api("clientes").then(r => { CLIENTES = Array.isArray(r) ? r : (r && r.clientes) || []; YO = (r && r.yo) || ""; if (!D && CODE === codigo) pintarCoach(); })
+  api("clientes").then(r => { CLIENTES = Array.isArray(r) ? r : (r && r.clientes) || []; YO = (r && r.yo) || ""; NINV = (r && r.invitados) || 0; if (!D && CODE === codigo) pintarCoach(); })
     .catch(e => { if (!D) app.innerHTML = `<div class="err-box">${esc(e.red ? "Sin conexión. Vuelve a intentarlo cuando tengas cobertura." : e.message)}</div><button class="link" id="salir">Salir del modo entrenador</button>`; });
 }
 function pintarCoach(){
@@ -703,6 +728,7 @@ function pintarCoach(){
     const ini = (c.nombre.match(/[A-Za-zÁÉÍÓÚÑáéíóúñ]+/g) || ["?"]).map(p => p[0]).join("").slice(0, 2).toUpperCase();
     const det = c.acceso ? `Entró ${haceTxt(c.acceso)}${c.entreno ? " · Apuntó entreno " + haceTxt(c.entreno) : ""}` : "Aún no ha abierto la app";
     h += `<button class="cl" data-cli="${CLIENTES.indexOf(c)}"><span class="av">${esc(ini)}</span><span class="ct"><b>${esc(c.nombre)}</b><small>${esc(det)}</small></span><span class="st ${cls}">${t}</span></button>`; });
+  if (NINV) h += `<div class="free" style="margin-top:14px">🆓 <b>${NINV} ${NINV === 1 ? "invitado" : "invitados"}</b> en la versión gratis. Los tienes con su WhatsApp en la pestaña <b>Invitados</b> del panel.</div>`;
   h += `<p class="mut small" style="line-height:1.5;margin-top:14px">Al abrir un cliente ves su app tal cual la ve él, en modo solo lectura. Tus visitas no cuentan como actividad suya.</p>
   <button class="link" id="salir">Salir del modo entrenador</button>`;
   app.innerHTML = h;
@@ -767,6 +793,117 @@ function viewBienvenida(){
   </div>`;
 }
 function terminarBienvenida(){ try { localStorage.setItem("entrenaitor_bienvenida", "1"); } catch(e){} PASO = 0; document.body.classList.remove("onb"); location.hash = ""; route(); }
+
+/* ========== Modo invitado (versión gratuita) ==========
+   Se entra con el código de invitado del panel (pestaña Entrenador, B3). Cada invitado se registra con nombre
+   y WhatsApp; puede apuntar sus propios entrenos. Lo demás se enseña bloqueado para animarle a contratar. */
+const INVK = "entrenaitor_inv", BORR = "entrenaitor_inv_borrador";
+let INVITADO = null;   // { token, nombre, codigo, sesiones }
+function leerInv(){ try { return JSON.parse(localStorage.getItem(INVK)) || null; } catch(e){ return null; } }
+function guardarInv(){ try { localStorage.setItem(INVK, JSON.stringify(INVITADO)); } catch(e){} }
+const ICO_LOCK = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>';
+const waContratar = () => waLink(`Hola Aitor, soy ${INVITADO ? INVITADO.nombre.split(" ")[0] : ""}. Estoy usando la versión gratuita de la app y me interesa entrenar contigo.`);
+function bloqueado(titulo, texto, preview, sinBoton){ return `<div class="lock"><h3>${ICO_LOCK}${titulo}</h3><p>${texto}</p>${preview ? `<div class="blur" aria-hidden="true">${preview}</div>` : ""}${sinBoton ? "" : `<a class="lock-cta" href="${esc(waContratar())}" target="_blank" rel="noopener">${WA_ICON}Quiero entrenar con Aitor</a>`}</div>`; }
+function viewInvAlta(msg){
+  document.body.classList.add("onb");
+  app.innerHTML = `<div class="onb-wrap">
+    <img src="${WM}" alt="Entrenaitor" style="width:210px;margin:0 0 26px">
+    <h1>Entrena gratis con la app</h1>
+    <p>Apunta tus entrenos, guarda tu historial y calcula tus calorías. Solo necesitamos saber quién eres.</p>
+    <label class="lb" for="inv-nom">Tu nombre</label>
+    <input class="txt" id="inv-nom" autocomplete="given-name" placeholder="Nombre">
+    <label class="lb" for="inv-wa">Tu WhatsApp</label>
+    <input class="txt" id="inv-wa" type="tel" inputmode="tel" autocomplete="tel" placeholder="600 000 000">
+    ${msg ? `<div class="field-err">${esc(msg)}</div>` : ""}
+    <button class="btn" id="invCrear" style="margin-top:18px">Empezar gratis</button>
+    <p class="mut small" style="margin-top:12px;line-height:1.5">Al empezar, Aitor guardará tus entrenos y tu contacto para ayudarte con tu entrenamiento y, de vez en cuando, escribirte con alguna propuesta. Si un día prefieres que lo borre, se lo dices y listo.</p>
+    <button class="onb-skip" id="invVolver">Tengo un código de cliente</button>
+  </div>`;
+}
+function entrarInvitado(g){
+  INVITADO = g; CODE = g.token; COACH = ""; PROPIO = false;
+  D = { invitado: true, cliente: g.nombre, semanas: [], dias: [] };
+  route();
+  api("invEntrar", CODE).then(r => { if (!INVITADO) return; INVITADO.nombre = r.nombre; INVITADO.sesiones = mezclarSesiones(r.sesiones); guardarInv(); D.cliente = r.nombre;
+      if (!/^#inv-/.test(location.hash)) route(); vaciarCola(); })
+    .catch(e => { if (!e.red) { salirInvitado(); viewLogin(e.message); } });
+}
+function mezclarSesiones(remotas){
+  // Las que están pendientes de enviar (sin conexión) se mantienen
+  const pend = cola().filter(it => it.fn === "invGuardar" && it.code === CODE).map(it => it.args[0]);
+  const m = {}; (remotas || []).concat(pend).forEach(x => { m[x.id] = x; });
+  return Object.values(m).sort((a, b) => a.fecha < b.fecha ? 1 : -1);
+}
+function salirInvitado(){ try { localStorage.removeItem(INVK); localStorage.removeItem(BORR); } catch(e){} INVITADO = null; D = null; CODE = ""; store.del(); location.hash = ""; tabbarUI(); }
+const fDia = iso => { const d = new Date(iso + "T12:00:00"); return { n: d.getDate(), m: d.toLocaleDateString("es-ES", { month: "short" }).replace(".", "") }; };
+function routeInv(h){
+  tabbarUI();
+  if (h === "inv-entreno") return viewInvEntreno();
+  if (h === "progreso" || h === "cuerpo" || h === "checkin") return viewInvProgreso();
+  if (h === "nutricion") return viewNutri();
+  viewInvHome();
+}
+function viewInvHome(){
+  const ses = (INVITADO && INVITADO.sesiones) || [], borr = leerBorrador();
+  let h = `<div class="brand"><div class="logo" style="display:flex;align-items:center;gap:10px"><img src="${LOGO}" alt="" style="width:40px;height:40px;border-radius:10px"><img src="${WM}" alt="Entrenaitor" style="height:24px"></div><span class="pill">Gratis</span></div>
+  <h1>Hola, ${esc(INVITADO.nombre.split(" ")[0])} 👋</h1>
+  ${installHTML()}
+  <button class="btn" data-go="inv-entreno" style="margin-top:14px">${borr ? "Seguir con el entreno empezado" : "Apuntar un entreno"}</button>`;
+  if (ses.length) {
+    h += `<div class="mut small" style="margin:18px 0 0">Tus entrenos</div>`;
+    ses.slice(0, 30).forEach(x => { const f = fDia(x.fecha), nS = x.ejercicios.reduce((a, e) => a + e.series.length, 0);
+      h += `<button class="ses" data-ses="${esc(x.id)}"><span class="d">${f.n}<small>${f.m}</small></span><span class="t"><b>${esc(x.ejercicios.map(e => e.nombre).join(", "))}</b><small>${x.ejercicios.length} ejercicios · ${nS} series</small></span></button>`; });
+  } else h += `<div class="card" style="margin-top:14px"><b>Empieza por tu próximo entreno</b><p class="mut small" style="margin:6px 0 0;line-height:1.5">Apunta tus ejercicios con sus series, repeticiones y kilos. Aquí tendrás tu historial para saber qué hiciste la última vez.</p></div>`;
+  h += `<div class="mut small" style="margin:22px 0 0">Con Aitor como entrenador</div>`;
+  h += bloqueado("Tu rutina, hecha para ti", "Aitor te programa cada semana: ejercicios, series, repeticiones y RIR adaptados a ti, y los ajusta según cómo progresas.", "", true);
+  h += bloqueado("Agujetas y recuperación", "Puntúa cómo te recuperas de cada sesión para que el plan se ajuste a ti.");
+  h += `<div class="free">Estás usando la <b>versión gratuita</b> de la app de Entrenaitor.</div>
+  <button class="link" id="invSalir">Salir</button>`;
+  app.innerHTML = h;
+}
+function viewInvProgreso(){
+  const fake = `<svg viewBox="0 0 340 150" width="100%"><polyline fill="none" stroke="#058789" stroke-width="4" points="20,120 70,110 120,90 170,85 220,60 270,45 320,30"/><g fill="#3fc3c5"><circle cx="20" cy="120" r="5"/><circle cx="120" cy="90" r="5"/><circle cx="220" cy="60" r="5"/><circle cx="320" cy="30" r="5"/></g></svg>`;
+  app.innerHTML = `<div class="brand"><h1>Progreso</h1></div>
+  ${bloqueado("Tu fuerza, semana a semana", "Con Aitor verás cómo sube tu fuerza estimada en cada ejercicio, tus mejores marcas y cuánto has mejorado desde el primer día.", fake, true)}
+  ${bloqueado("Tu cuerpo, bajo control", "Check-in semanal con tu peso, % de grasa, masa muscular y más, con gráficas de tu evolución.", `<div class="mets" style="margin:0"><div class="met"><small>Peso</small><b>72,4<u>kg</u></b><i>−2,1 kg</i></div><div class="met"><small>Grasa</small><b>16,8<u>%</u></b><i>−1,9 %</i></div></div>`)}`;
+}
+/* --- Editor de entreno del invitado --- */
+function leerBorrador(){ try { return JSON.parse(localStorage.getItem(BORR)) || null; } catch(e){ return null; } }
+function guardarBorrador(b){ try { if (b) localStorage.setItem(BORR, JSON.stringify(b)); else localStorage.removeItem(BORR); } catch(e){} }
+let IB = null;
+function nuevoBorrador(base){ return { id: base ? base.id : "s" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), fecha: base ? base.fecha : hoyISO(), editando: !!base,
+  ejercicios: base ? base.ejercicios.map(e => ({ nombre: e.nombre, series: e.series.map(x => ({ r: x[0], k: x[1] })) })) : [{ nombre: "", series: [{ r: "", k: "" }] }] }; }
+function viewInvEntreno(){
+  IB = leerBorrador() || nuevoBorrador(); guardarBorrador(IB);
+  const usados = [...new Set(((INVITADO && INVITADO.sesiones) || []).flatMap(x => x.ejercicios.map(e => e.nombre)))];
+  const ult = (INVITADO.sesiones || [])[0];
+  let h = `<button class="back" data-go="inicio">← Inicio</button>
+  <h1>${IB.editando ? "Editar entreno" : "Nuevo entreno"}</h1>
+  <label class="lb" for="ib-fecha">Fecha</label><input class="txt" type="date" id="ib-fecha" value="${IB.fecha}" max="${hoyISO()}">
+  ${!IB.editando && ult && IB.ejercicios.length === 1 && !IB.ejercicios[0].nombre ? `<button class="iadd" id="ibCopiar" style="width:100%">Repetir mi último entreno (${esc(ult.ejercicios.map(e => e.nombre).slice(0, 2).join(", "))}${ult.ejercicios.length > 2 ? "…" : ""})</button>` : ""}
+  <datalist id="ib-ejs">${usados.map(n => `<option value="${esc(n)}">`).join("")}</datalist>`;
+  IB.ejercicios.forEach((e, i) => {
+    h += `<div class="iex"><div class="iex-top"><input class="txt" list="ib-ejs" data-ibn="${i}" value="${esc(e.nombre)}" placeholder="Ejercicio (ej. Press banca)" autocomplete="off"><button class="ix" data-ibdel="${i}" aria-label="Quitar ejercicio">✕</button></div>
+      <div class="ihead"><span>Serie</span><span>Reps</span><span>Kg</span><span></span></div>
+      ${e.series.map((x, j) => `<div class="iset"><span>${j + 1}</span><input class="txt" inputmode="numeric" data-ibs="${i},${j},r" value="${esc(x.r)}" placeholder="0"><input class="txt" inputmode="decimal" data-ibs="${i},${j},k" value="${esc(x.k)}" placeholder="kg"><button class="ix" data-ibquita="${i},${j}" aria-label="Quitar serie">−</button></div>`).join("")}
+      <button class="iadd" data-ibset="${i}">+ Añadir serie</button></div>`; });
+  h += `<button class="iadd" id="ibEj" style="width:100%">+ Añadir ejercicio</button>
+  <button class="btn" id="ibGuardar">Guardar entreno</button>
+  ${IB.editando ? `<button class="link" id="ibBorrar" style="color:#ff8a8a">Borrar este entreno</button>` : `<button class="link" id="ibDescartar">Descartar</button>`}`;
+  app.innerHTML = h;
+}
+function ibRepinta(){ const y = window.scrollY; guardarBorrador(IB); viewInvEntreno(); window.scrollTo(0, y); }
+function ibGuardar(btn){
+  const ej = IB.ejercicios.map(e => ({ nombre: e.nombre.trim(), series: e.series.filter(x => String(x.r).trim() !== "").map(x => [String(x.r).trim(), String(x.k).trim().replace(",", ".")]) }))
+    .filter(e => e.nombre && e.series.length);
+  if (!ej.length) { toast("Apunta al menos un ejercicio con una serie", true); return; }
+  const s = { id: IB.id, fecha: document.getElementById("ib-fecha").value || hoyISO(), ejercicios: ej };
+  btn.disabled = true;
+  guardar("invGuardar", s).then(() => {
+    INVITADO.sesiones = [s].concat((INVITADO.sesiones || []).filter(x => x.id !== s.id)).sort((a, b) => a.fecha < b.fecha ? 1 : -1);
+    guardarInv(); guardarBorrador(null); IB = null; toast("Entreno guardado 💪"); go("inicio");
+  }).catch(() => { btn.disabled = false; });
+}
 
 /* ========== Vistas ========== */
 function viewLogin(msg){
@@ -894,6 +1031,7 @@ function route(){
   document.body.style.overflow = "";
   tabbarUI(); coachUI();
   if (!D) { if (COACH) viewCoach(); return; }
+  if (D.invitado) { document.body.classList.remove("onb"); routeInv(location.hash.replace("#","")); window.scrollTo(0,0); return; }
   if (necesitaPrivacidad()) { tabbarUI(); viewPrivacidad(); return; }
   if (!COACH && !bienvenidaVista()) { viewBienvenida(); return; }
   document.body.classList.remove("onb");
@@ -916,6 +1054,26 @@ app.addEventListener("click", ev=>{
   if (ev.target.id === "prSheet") { abrirSheet(false); return; }
   const t = ev.target.closest("button"); if (!t) return;
   if (t.id === "pr-pick") { abrirSheet(true); return; }
+  if (t.id === "invCrear") { const nom = document.getElementById("inv-nom").value.trim(), wa = document.getElementById("inv-wa").value.trim();
+    if (nom.length < 2) return viewInvAlta("Escribe tu nombre.");
+    if (wa.replace(/\D/g, "").length < 9) return viewInvAlta("Escribe tu número de WhatsApp.");
+    const cod = CODE; t.disabled = true;
+    api("invAlta", cod, nom, wa).then(r => { const g = { token: r.token, nombre: r.nombre, codigo: cod, sesiones: [] }; INVITADO = g; guardarInv(); store.del(); document.body.classList.remove("onb"); entrarInvitado(g); toast("¡Bienvenido/a, " + r.nombre.split(" ")[0] + "!"); })
+      .catch(e => viewInvAlta(e.red ? "Sin conexión. Inténtalo cuando tengas cobertura." : e.message));
+    return; }
+  if (t.id === "invVolver") { document.body.classList.remove("onb"); CODE = ""; store.del(); viewLogin(); return; }
+  if (t.id === "invSalir") { salirInvitado(); viewLogin(); return; }
+  if (t.dataset.ses && INVITADO) { const x = (INVITADO.sesiones || []).find(z => z.id === t.dataset.ses); if (x) { guardarBorrador(nuevoBorrador(x)); go("inv-entreno"); } return; }
+  if (t.id === "ibCopiar") { const u = INVITADO.sesiones[0]; IB = nuevoBorrador(u); IB.id = "s" + Date.now().toString(36); IB.fecha = hoyISO(); IB.editando = false; ibRepinta(); return; }
+  if (t.id === "ibEj") { IB.ejercicios.push({ nombre: "", series: [{ r: "", k: "" }] }); ibRepinta(); const ins = app.querySelectorAll("[data-ibn]"); ins[ins.length - 1].focus(); return; }
+  if (t.dataset.ibdel != null) { IB.ejercicios.splice(+t.dataset.ibdel, 1); if (!IB.ejercicios.length) IB.ejercicios.push({ nombre: "", series: [{ r: "", k: "" }] }); ibRepinta(); return; }
+  if (t.dataset.ibset != null) { const e = IB.ejercicios[+t.dataset.ibset], u = e.series[e.series.length - 1] || { r: "", k: "" }; e.series.push({ r: u.r, k: u.k }); ibRepinta(); return; }
+  if (t.dataset.ibquita) { const [i, j] = t.dataset.ibquita.split(",").map(Number); IB.ejercicios[i].series.splice(j, 1); if (!IB.ejercicios[i].series.length) IB.ejercicios[i].series.push({ r: "", k: "" }); ibRepinta(); return; }
+  if (t.id === "ibGuardar") { ibGuardar(t); return; }
+  if (t.id === "ibDescartar") { guardarBorrador(null); IB = null; go("inicio"); return; }
+  if (t.id === "ibBorrar") { const id = IB.id; t.disabled = true;
+    guardar("invBorrar", id).then(() => { INVITADO.sesiones = INVITADO.sesiones.filter(x => x.id !== id); guardarInv(); guardarBorrador(null); IB = null; toast("Entreno borrado"); go("inicio"); }).catch(() => { t.disabled = false; });
+    return; }
   if (t.id === "aceptoPriv") { t.disabled = true; marcarPrivLocal(); D.privacidad = "app";
     const fin = () => route();
     if (navigator.onLine) api("aceptarPrivacidad", CODE).then(fin).catch(() => { encolar("aceptarPrivacidad", []); fin(); }); else { encolar("aceptarPrivacidad", []); fin(); }
@@ -934,11 +1092,11 @@ app.addEventListener("click", ev=>{
   if (t.id === "entrar"){ const v = document.getElementById("cod").value.trim().toUpperCase(); if (!v) return; CODE = v; cargar(); return; }
   if (t.dataset.nseg){ const d = nutriDatos(); d[t.dataset.nseg] = t.dataset.v; nutriGuardar(d);
     t.parentElement.querySelectorAll("button").forEach(x => x.classList.toggle("on", x === t)); nutriActualizar(); return; }
-  if (t.id === "instYes" && installEvt){ installEvt.prompt(); installEvt.userChoice.finally(()=>{ installEvt = null; viewHome(); }); return; }
-  if (t.id === "instNo"){ try { localStorage.setItem("entrenaitor_inst_ok","1"); } catch(e){} viewHome(); return; }
+  if (t.id === "instYes" && installEvt){ installEvt.prompt(); installEvt.userChoice.finally(()=>{ installEvt = null; route(); }); return; }
+  if (t.id === "instNo"){ try { localStorage.setItem("entrenaitor_inst_ok","1"); } catch(e){} route(); return; }
   if (t.id === "instCopy"){ const u = enlaceCliente();
     (navigator.clipboard ? navigator.clipboard.writeText(u) : Promise.reject()).then(()=>toast("Enlace copiado. Pégalo en Chrome")).catch(()=>{ window.prompt("Copia este enlace y ábrelo en Chrome:", u); }); return; }
-  if (t.id === "salir"){ store.del(); CODE = ""; D = null; PROG = null; PROG_SEL = ""; BASC = null; COACH = ""; COACH_NOMBRE = ""; PROPIO = false; YO = ""; CLIENTES = null; coachUI(); location.hash = ""; tabbarUI(); viewLogin(); return; }
+  if (t.id === "salir"){ try { localStorage.removeItem(INVK); } catch(e){} INVITADO = null; store.del(); CODE = ""; D = null; PROG = null; PROG_SEL = ""; BASC = null; COACH = ""; COACH_NOMBRE = ""; PROPIO = false; YO = ""; CLIENTES = null; coachUI(); location.hash = ""; tabbarUI(); viewLogin(); return; }
   if (t.dataset.go){ go(t.dataset.go); return; }
   if (t.dataset.week){ cargar(+t.dataset.week); return; }
   const n = diaActual(), d = n && dia(n);
@@ -983,7 +1141,11 @@ app.addEventListener("click", ev=>{
 function viewDayKeep(n){ const y = window.scrollY; viewDay(n); window.scrollTo(0,y); }
 
 app.addEventListener("keydown", ev=>{ if (ev.key === "Escape") abrirSheet(false); if (ev.key==="Enter" && ev.target.id==="cod") document.getElementById("entrar").click(); });
-app.addEventListener("input", ev=>{ if (ev.target.type==="range") ev.target.nextElementSibling.textContent = ev.target.value;
+app.addEventListener("input", ev=>{
+  if (IB && ev.target.dataset.ibn != null) { IB.ejercicios[+ev.target.dataset.ibn].nombre = ev.target.value; guardarBorrador(IB); return; }
+  if (IB && ev.target.dataset.ibs) { const [i, j, c] = ev.target.dataset.ibs.split(","); IB.ejercicios[+i].series[+j][c] = ev.target.value; guardarBorrador(IB); return; }
+  if (IB && ev.target.id === "ib-fecha") { IB.fecha = ev.target.value; guardarBorrador(IB); return; }
+  if (ev.target.type==="range") ev.target.nextElementSibling.textContent = ev.target.value;
   if (ev.target.dataset.n){ const d = nutriDatos(); d[ev.target.dataset.n] = ev.target.dataset.n === "act" ? +ev.target.value : ev.target.value.trim(); nutriGuardar(d); nutriActualizar(); } });
 // Si cambia una serie ya marcada, se vuelve a guardar al salir del campo
 app.addEventListener("change", ev=>{
@@ -1010,7 +1172,9 @@ T.addEventListener("click", ev=>{ const b = ev.target.closest("button"); if(!b) 
 let toT; function toast(m, err){ const el=document.getElementById("toast"); el.textContent=m; el.className="toast show"+(err?" err":""); clearTimeout(toT); toT=setTimeout(()=>el.classList.remove("show"),2200); }
 
 window.addEventListener("hashchange", route);
-if (CODE) cargar(); else viewLogin();
+{ const g = leerInv();
+  if (g && (!CODIGO_URL || String(CODIGO_URL).toUpperCase() === g.codigo)) entrarInvitado(g);
+  else if (CODE) cargar(); else viewLogin(); }
 /* Actualización automática: si hay versión nueva, la app se recarga sola
    (salvo si el cliente está apuntando series o agujetas; entonces espera a que salga de esa pantalla). */
 if ("serviceWorker" in navigator) {
