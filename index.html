@@ -169,6 +169,22 @@
   @keyframes sube{from{transform:translateY(40px);opacity:.4}to{transform:none;opacity:1}}
   @keyframes fade{from{opacity:0}to{opacity:1}}
   .chart{width:100%;height:auto;display:block;margin-top:6px}
+  .coachbar{position:sticky;top:0;z-index:25;display:flex;align-items:center;gap:10px;background:#3a2c00;color:#ffe08a;border-bottom:1px solid #6b5200;padding:calc(8px + env(safe-area-inset-top)) 14px 8px;font-size:13px}
+  .coachbar[hidden]{display:none}
+  .coachbar b{color:#fff}
+  .coachbar span{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .coachbar button{border:1px solid #6b5200;background:#4d3b00;color:#fff;border-radius:999px;padding:6px 12px;font:600 13px Inter;cursor:pointer}
+  body.coach #app input, body.coach #app textarea, body.coach #app select.txt:not(#x), body.coach .chk, body.coach .scale button, body.coach .dm-b{pointer-events:none}
+  body.coach #app input, body.coach #app textarea{opacity:.85}
+  body.coach #fin, body.coach #saveDoms, body.coach #saveCheckin, body.coach .cta-checkin, body.coach [data-go="checkin"], body.coach #tabWa, body.coach .install, body.coach #app .wa, body.coach #sync{display:none!important}
+  body.coach .tabbar{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .cl{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin:8px 0;color:var(--txt);cursor:pointer;font:inherit}
+  .cl .av{flex:0 0 40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#0a2628;color:var(--acc-txt);font:700 17px "Barlow Condensed",sans-serif}
+  .cl .ct{flex:1;min-width:0}
+  .cl b{display:block;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .cl small{display:block;color:var(--mut);font-size:12.5px;margin-top:2px}
+  .cl .st{flex:0 0 auto;font-size:11.5px;font-weight:600;padding:3px 9px;border-radius:999px}
+  .st-ok{background:#173322;color:#5fd38d} .st-warn{background:#33290f;color:#f4c24d} .st-no{background:var(--card2);color:var(--mut)} .st-off{background:#331717;color:#ff8a8a}
   .pseg{display:grid;grid-template-columns:1fr 1fr;gap:4px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:4px;margin:10px 0 12px}
   .pseg button{border:0;border-radius:9px;padding:9px 0;font:600 14px Inter;background:none;color:var(--mut);cursor:pointer}
   .pseg button.on{background:var(--acc);color:#fff}
@@ -210,6 +226,7 @@
 </style>
 </head>
 <body>
+<div class="coachbar" id="coachbar" hidden><span id="coachTxt"></span><button id="coachCambiar">Cambiar</button></div>
 <div class="wrap" id="app"><div class="center"><div class="spin"></div></div></div>
 <div class="timer" id="timer">
   <div class="t" id="tval">2:00</div>
@@ -231,6 +248,7 @@ var API_URL = "https://script.google.com/macros/s/AKfycbz2nE5UvZKA6NkE9Xu-ETMJG6
 <script>
 /* ========== Conexión con la hoja ========== */
 const KEY = "entrenaitor_codigo";
+let COACH = "", COACH_NOMBRE = "";   // modo entrenador (solo lectura)
 const LOGO = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyODAgMjgwIiB3aWR0aD0iMTA4MCIgaGVpZ2h0PSIxMDgwIj48cmVjdCB3aWR0aD0iMjgwIiBoZWlnaHQ9IjI4MCIgcng9IjYyIiBmaWxsPSIjMDU4Nzg5Ii8+PGRlZnM+PG1hc2sgaWQ9ImNpIiBtYXNrVW5pdHM9InVzZXJTcGFjZU9uVXNlIiB4PSIwIiB5PSIwIiB3aWR0aD0iMjgwIiBoZWlnaHQ9IjI4MCI+PHJlY3Qgd2lkdGg9IjI4MCIgaGVpZ2h0PSIyODAiIGZpbGw9IndoaXRlIi8+PHBvbHlnb24gcG9pbnRzPSIwLDE0MCAyODAsMTIwIDI4MCwxMzAgMCwxNTAiIGZpbGw9ImJsYWNrIi8+PC9tYXNrPjwvZGVmcz48ZyBtYXNrPSJ1cmwoI2NpKSI+PHBhdGggZD0iTTQ0NCA1NThIMjQ5UTI0NSA1NTggMjQzIDU1M0wyMjggNDI3UTIyOCA0MjIgMjMyIDQyMkgzMzlRMzQ0IDQyMiAzNDcuMCA0MTguNVEzNTAgNDE1IDM0OSA0MTBMMzM0IDI5MVEzMzQgMjg2IDMzMC4wIDI4Mi41UTMyNiAyNzkgMzIxIDI3OUgyMTVRMjExIDI3OSAyMDkgMjc0TDE5NCAxNDdRMTkyIDE0MiAxOTggMTQySDM5M1EzOTggMTQyIDQwMS4wIDEzOC41UTQwNCAxMzUgNDAzIDEzMEwzODkgMTJRMzg4IDcgMzg0LjAgMy41UTM4MCAwIDM3NSAwSDI2UTIxIDAgMTguMCAzLjVRMTUgNyAxNiAxMkw5OSA2ODhRMTAwIDY5MyAxMDMuNSA2OTYuNVExMDcgNzAwIDExMiA3MDBINDYxUTQ3MiA3MDAgNDcyIDY4OEw0NTcgNTcwUTQ1NiA1NjUgNDUyLjUgNTYxLjVRNDQ5IDU1OCA0NDQgNTU4WiIgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoNDAuMzcgMjE0LjAwKSBzY2FsZSgwLjIxMjAwIC0wLjIxMjAwKSIgZmlsbD0iI2ZmZmZmZiIvPjxwYXRoIGQ9Ik0yOTcgMTEgMjk1IDk4UTI5NiAxMDAgMjk0LjAgMTAxLjVRMjkyIDEwMyAyOTAgMTAzSDE4NVExNzkgMTAzIDE3OSA5OEwxNTcgMTFRMTU0IDAgMTQzIDBINVEtNyAwIC0zIDEzTDIyMCA2ODlRMjIzIDcwMCAyMzQgNzAwSDM5MlE0MDQgNzAwIDQwNCA2ODlMNDYwIDEzVjEwUTQ2MCAwIDQ0OSAwSDMwOFEyOTcgMCAyOTcgMTFaTTIyMCAyMzFIMjg1UTI5MCAyMzEgMjkwIDIzNkwyODMgNDY0UTI4MyA0NjggMjgxLjAgNDY4LjBRMjc5IDQ2OCAyNzcgNDY0TDIxNyAyMzZRMjE3IDIzMSAyMjAgMjMxWiIgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoMTI3LjExIDIxNC4wMCkgc2NhbGUoMC4yMTIwMCAtMC4yMTIwMCkiIGZpbGw9IiNmZmZmZmYiLz48L2c+PC9zdmc+";
 const WM = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA5NjEgMjMyIiB3aWR0aD0iOTYxIiBoZWlnaHQ9IjIzMiI+PGRlZnM+PG1hc2sgaWQ9ImNvcnRlIiBtYXNrVW5pdHM9InVzZXJTcGFjZU9uVXNlIiB4PSIwIiB5PSIwIiB3aWR0aD0iOTYxLjQyMiIgaGVpZ2h0PSIyNjAiPjxyZWN0IHdpZHRoPSI5NjEuNDIyIiBoZWlnaHQ9IjI2MCIgZmlsbD0id2hpdGUiLz48cG9seWdvbiBwb2ludHM9IjAsMTA0IDk2MS40MjIsNzQgOTYxLjQyMiw4NCAwLDExNCIgZmlsbD0iYmxhY2siLz48L21hc2s+PC9kZWZzPjxnIG1hc2s9InVybCgjY29ydGUpIj48cGF0aCBkPSJNNDQ0IDU1OEgyNDlRMjQ1IDU1OCAyNDMgNTUzTDIyOCA0MjdRMjI4IDQyMiAyMzIgNDIySDMzOVEzNDQgNDIyIDM0Ny4wIDQxOC41UTM1MCA0MTUgMzQ5IDQxMEwzMzQgMjkxUTMzNCAyODYgMzMwLjAgMjgyLjVRMzI2IDI3OSAzMjEgMjc5SDIxNVEyMTEgMjc5IDIwOSAyNzRMMTk0IDE0N1ExOTIgMTQyIDE5OCAxNDJIMzkzUTM5OCAxNDIgNDAxLjAgMTM4LjVRNDA0IDEzNSA0MDMgMTMwTDM4OSAxMlEzODggNyAzODQuMCAzLjVRMzgwIDAgMzc1IDBIMjZRMjEgMCAxOC4wIDMuNVExNSA3IDE2IDEyTDk5IDY4OFExMDAgNjkzIDEwMy41IDY5Ni41UTEwNyA3MDAgMTEyIDcwMEg0NjFRNDcyIDcwMCA0NzIgNjg4TDQ1NyA1NzBRNDU2IDU2NSA0NTIuNSA1NjEuNVE0NDkgNTU4IDQ0NCA1NThaIiB0cmFuc2Zvcm09InRyYW5zbGF0ZSgxNC4wMCAxNzIuMDApIHNjYWxlKDAuMTg2MDAgLTAuMTg2MDApIiBmaWxsPSIjZmZmZmZmIi8+PHBhdGggZD0iTTM5MSA3MDBINTI3UTUzMiA3MDAgNTM1LjAgNjk2LjVRNTM4IDY5MyA1MzcgNjg4TDQ1NCAxMlE0NTQgNyA0NTAuMCAzLjVRNDQ2IDAgNDQxIDBIMjg3UTI3NyAwIDI3NSAxMEwyMjEgMzU4UTIyMSAzNjEgMjE4LjUgMzYxLjVRMjE2IDM2MiAyMTYgMzU4TDE3NSAxMlExNzQgNyAxNzAuNSAzLjVRMTY3IDAgMTYyIDBIMjZRMjEgMCAxOC4wIDMuNVExNSA3IDE2IDEyTDk5IDY4OFExMDAgNjkzIDEwMy41IDY5Ni41UTEwNyA3MDAgMTEyIDcwMEgyNjRRMjc1IDcwMCAyNzcgNjkwTDMzMSAzNDBRMzMxIDMzNyAzMzMuNSAzMzcuMFEzMzYgMzM3IDMzNyAzNDFMMzc4IDY4OFEzNzkgNjkzIDM4Mi41IDY5Ni41UTM4NiA3MDAgMzkxIDcwMFoiIHRyYW5zZm9ybT0idHJhbnNsYXRlKDkyLjYxIDE3Mi4wMCkgc2NhbGUoMC4xODYwMCAtMC4xODYwMCkiIGZpbGw9IiNmZmZmZmYiLz48cGF0aCBkPSJNNTE1IDY4OCA1MDEgNTcwUTUwMCA1NjUgNDk2LjUgNTYxLjVRNDkzIDU1OCA0ODggNTU4SDM2N1EzNjIgNTU4IDM2MiA1NTNMMjk1IDEyUTI5NSA3IDI5MS4wIDMuNVEyODcgMCAyODIgMEgxNDVRMTM0IDAgMTM0IDEyTDIwMSA1NTNRMjAxIDU1OCAxOTcgNTU4SDgxUTc2IDU1OCA3My4wIDU2MS41UTcwIDU2NSA3MSA1NzBMODUgNjg4UTg2IDY5MyA5MC4wIDY5Ni41UTk0IDcwMCA5OSA3MDBINTA1UTUxMCA3MDAgNTEzLjAgNjk2LjVRNTE2IDY5MyA1MTUgNjg4WiIgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoMTg1LjcyIDE3Mi4wMCkgc2NhbGUoMC4xODYwMCAtMC4xODYwMCkiIGZpbGw9IiNmZmZmZmYiLz48cGF0aCBkPSJNMjY3IDEwIDIzNCAyNzVRMjMzIDI3OSAyMjkgMjc5SDIxNVEyMTEgMjc5IDIwOSAyNzRMMTc3IDEyUTE3NiA3IDE3Mi41IDMuNVExNjkgMCAxNjQgMEgyNlEyMSAwIDE4LjAgMy41UTE1IDcgMTYgMTJMOTkgNjg4UTEwMCA2OTMgMTAzLjUgNjk2LjVRMTA3IDcwMCAxMTIgNzAwSDMyMVEzOTggNzAwIDQ0Mi41IDY1MS4wUTQ4NyA2MDIgNDg3IDUyMFE0ODcgNDk2IDQ4NSA0ODNRNDc4IDQyNyA0NTIuNSAzODIuNVE0MjcgMzM4IDM4OCAzMTFRMzg2IDMxMCAzODUuMCAzMDguNVEzODQgMzA3IDM4NSAzMDVMNDMyIDE0VjEyUTQzMiAwIDQyMSAwSDI3OVEyNjggMCAyNjcgMTBaTTI0MyA1NTMgMjI2IDQxMVEyMjYgNDA2IDIzMCA0MDZIMjU3UTI4NyA0MDYgMzA2LjAgNDMwLjVRMzI1IDQ1NSAzMjUgNDk4UTMyNSA1MjcgMzEyLjAgNTQyLjVRMjk5IDU1OCAyNzYgNTU4SDI0OVEyNDUgNTU4IDI0MyA1NTNaIiB0cmFuc2Zvcm09InRyYW5zbGF0ZSgyNzIuMTQgMTcyLjAwKSBzY2FsZSgwLjE4NjAwIC0wLjE4NjAwKSIgZmlsbD0iI2ZmZmZmZiIvPjxwYXRoIGQ9Ik00NDQgNTU4SDI0OVEyNDUgNTU4IDI0MyA1NTNMMjI4IDQyN1EyMjggNDIyIDIzMiA0MjJIMzM5UTM0NCA0MjIgMzQ3LjAgNDE4LjVRMzUwIDQxNSAzNDkgNDEwTDMzNCAyOTFRMzM0IDI4NiAzMzAuMCAyODIuNVEzMjYgMjc5IDMyMSAyNzlIMjE1UTIxMSAyNzkgMjA5IDI3NEwxOTQgMTQ3UTE5MiAxNDIgMTk4IDE0MkgzOTNRMzk4IDE0MiA0MDEuMCAxMzguNVE0MDQgMTM1IDQwMyAxMzBMMzg5IDEyUTM4OCA3IDM4NC4wIDMuNVEzODAgMCAzNzUgMEgyNlEyMSAwIDE4LjAgMy41UTE1IDcgMTYgMTJMOTkgNjg4UTEwMCA2OTMgMTAzLjUgNjk2LjVRMTA3IDcwMCAxMTIgNzAwSDQ2MVE0NzIgNzAwIDQ3MiA2ODhMNDU3IDU3MFE0NTYgNTY1IDQ1Mi41IDU2MS41UTQ0OSA1NTggNDQ0IDU1OFoiIHRyYW5zZm9ybT0idHJhbnNsYXRlKDM1OC4wMSAxNzIuMDApIHNjYWxlKDAuMTg2MDAgLTAuMTg2MDApIiBmaWxsPSIjZmZmZmZmIi8+PHBhdGggZD0iTTM5MSA3MDBINTI3UTUzMiA3MDAgNTM1LjAgNjk2LjVRNTM4IDY5MyA1MzcgNjg4TDQ1NCAxMlE0NTQgNyA0NTAuMCAzLjVRNDQ2IDAgNDQxIDBIMjg3UTI3NyAwIDI3NSAxMEwyMjEgMzU4UTIyMSAzNjEgMjE4LjUgMzYxLjVRMjE2IDM2MiAyMTYgMzU4TDE3NSAxMlExNzQgNyAxNzAuNSAzLjVRMTY3IDAgMTYyIDBIMjZRMjEgMCAxOC4wIDMuNVExNSA3IDE2IDEyTDk5IDY4OFExMDAgNjkzIDEwMy41IDY5Ni41UTEwNyA3MDAgMTEyIDcwMEgyNjRRMjc1IDcwMCAyNzcgNjkwTDMzMSAzNDBRMzMxIDMzNyAzMzMuNSAzMzcuMFEzMzYgMzM3IDMzNyAzNDFMMzc4IDY4OFEzNzkgNjkzIDM4Mi41IDY5Ni41UTM4NiA3MDAgMzkxIDcwMFoiIHRyYW5zZm9ybT0idHJhbnNsYXRlKDQzNi42MSAxNzIuMDApIHNjYWxlKDAuMTg2MDAgLTAuMTg2MDApIiBmaWxsPSIjZmZmZmZmIi8+PHBhdGggZD0iTTI5NyAxMSAyOTUgOThRMjk2IDEwMCAyOTQuMCAxMDEuNVEyOTIgMTAzIDI5MCAxMDNIMTg1UTE3OSAxMDMgMTc5IDk4TDE1NyAxMVExNTQgMCAxNDMgMEg1US03IDAgLTMgMTNMMjIwIDY4OVEyMjMgNzAwIDIzNCA3MDBIMzkyUTQwNCA3MDAgNDA0IDY4OUw0NjAgMTNWMTBRNDYwIDAgNDQ5IDBIMzA4UTI5NyAwIDI5NyAxMVpNMjIwIDIzMUgyODVRMjkwIDIzMSAyOTAgMjM2TDI4MyA0NjRRMjgzIDQ2OCAyODEuMCA0NjguMFEyNzkgNDY4IDI3NyA0NjRMMjE3IDIzNlEyMTcgMjMxIDIyMCAyMzFaIiB0cmFuc2Zvcm09InRyYW5zbGF0ZSg1MjkuNzMgMTcyLjAwKSBzY2FsZSgwLjE4NjAwIC0wLjE4NjAwKSIgZmlsbD0iIzNmYzNjNSIvPjxwYXRoIGQ9Ik0xNiAxMiA5OSA2ODhRMTAwIDY5MyAxMDMuNSA2OTYuNVExMDcgNzAwIDExMiA3MDBIMjUwUTI1NSA3MDAgMjU4LjAgNjk2LjVRMjYxIDY5MyAyNjAgNjg4TDE3NyAxMlExNzYgNyAxNzIuNSAzLjVRMTY5IDAgMTY0IDBIMjZRMjEgMCAxOC4wIDMuNVExNSA3IDE2IDEyWiIgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoNjIwLjQzIDE3Mi4wMCkgc2NhbGUoMC4xODYwMCAtMC4xODYwMCkiIGZpbGw9IiMzZmMzYzUiLz48cGF0aCBkPSJNNTE1IDY4OCA1MDEgNTcwUTUwMCA1NjUgNDk2LjUgNTYxLjVRNDkzIDU1OCA0ODggNTU4SDM2N1EzNjIgNTU4IDM2MiA1NTNMMjk1IDEyUTI5NSA3IDI5MS4wIDMuNVEyODcgMCAyODIgMEgxNDVRMTM0IDAgMTM0IDEyTDIwMSA1NTNRMjAxIDU1OCAxOTcgNTU4SDgxUTc2IDU1OCA3My4wIDU2MS41UTcwIDU2NSA3MSA1NzBMODUgNjg4UTg2IDY5MyA5MC4wIDY5Ni41UTk0IDcwMCA5OSA3MDBINTA1UTUxMCA3MDAgNTEzLjAgNjk2LjVRNTE2IDY5MyA1MTUgNjg4WiIgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoNjYxLjg0IDE3Mi4wMCkgc2NhbGUoMC4xODYwMCAtMC4xODYwMCkiIGZpbGw9IiMzZmMzYzUiLz48cGF0aCBkPSJNMjkgMTY2UTI5IDE3NyAzMSAxOTlMNjggNTAxUTgwIDU5NiAxNDIuNSA2NTIuMFEyMDUgNzA4IDI5OSA3MDhRMzg0IDcwOCA0MzMuNSA2NjEuMFE0ODMgNjE0IDQ4MyA1MzNRNDgzIDUyMyA0ODEgNTAxTDQ0MyAxOTlRNDMyIDEwNCAzNjguNSA0OC4wUTMwNSAtOCAyMTEgLThRMTI2IC04IDc3LjUgMzguNVEyOSA4NSAyOSAxNjZaTTI4MiAxOTIgMzIwIDUwOFEzMjEgNTEzIDMyMSA1MjFRMzIxIDU0MiAzMTEuMCA1NTQuMFEzMDEgNTY2IDI4MiA1NjZRMjYxIDU2NiAyNDcuMCA1NTAuMFEyMzMgNTM0IDIzMCA1MDhMMTkxIDE5MkwxOTAgMTgxUTE5MCAxNTkgMjAwLjAgMTQ2LjVRMjEwIDEzNCAyMjkgMTM0UTI1MCAxMzQgMjY0LjAgMTQ5LjVRMjc4IDE2NSAyODIgMTkyWiIgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoNzQ4LjI2IDE3Mi4wMCkgc2NhbGUoMC4xODYwMCAtMC4xODYwMCkiIGZpbGw9IiMzZmMzYzUiLz48cGF0aCBkPSJNMjY3IDEwIDIzNCAyNzVRMjMzIDI3OSAyMjkgMjc5SDIxNVEyMTEgMjc5IDIwOSAyNzRMMTc3IDEyUTE3NiA3IDE3Mi41IDMuNVExNjkgMCAxNjQgMEgyNlEyMSAwIDE4LjAgMy41UTE1IDcgMTYgMTJMOTkgNjg4UTEwMCA2OTMgMTAzLjUgNjk2LjVRMTA3IDcwMCAxMTIgNzAwSDMyMVEzOTggNzAwIDQ0Mi41IDY1MS4wUTQ4NyA2MDIgNDg3IDUyMFE0ODcgNDk2IDQ4NSA0ODNRNDc4IDQyNyA0NTIuNSAzODIuNVE0MjcgMzM4IDM4OCAzMTFRMzg2IDMxMCAzODUuMCAzMDguNVEzODQgMzA3IDM4NSAzMDVMNDMyIDE0VjEyUTQzMiAwIDQyMSAwSDI3OVEyNjggMCAyNjcgMTBaTTI0MyA1NTMgMjI2IDQxMVEyMjYgNDA2IDIzMCA0MDZIMjU3UTI4NyA0MDYgMzA2LjAgNDMwLjVRMzI1IDQ1NSAzMjUgNDk4UTMyNSA1MjcgMzEyLjAgNTQyLjVRMjk5IDU1OCAyNzYgNTU4SDI0OVEyNDUgNTU4IDI0MyA1NTNaIiB0cmFuc2Zvcm09InRyYW5zbGF0ZSg4MzMuNTYgMTcyLjAwKSBzY2FsZSgwLjE4NjAwIC0wLjE4NjAwKSIgZmlsbD0iIzNmYzNjNSIvPjwvZz48cmVjdCB4PSI1NjAuNyIgeT0iMjA1LjUiIHdpZHRoPSIzMjQuNyIgaGVpZ2h0PSI5IiByeD0iNC41IiBmaWxsPSIjM2ZjM2M1Ii8+PHJlY3QgeD0iNTQ4LjciIHk9IjE5MC4wIiB3aWR0aD0iMTIiIGhlaWdodD0iNDAiIHJ4PSIzIiBmaWxsPSIjM2ZjM2M1Ii8+PHJlY3QgeD0iNTM4LjciIHk9IjE5OC4wIiB3aWR0aD0iOCIgaGVpZ2h0PSIyNCIgcng9IjIuNSIgZmlsbD0iIzNmYzNjNSIvPjxyZWN0IHg9Ijg4NS40IiB5PSIxOTAuMCIgd2lkdGg9IjEyIiBoZWlnaHQ9IjQwIiByeD0iMyIgZmlsbD0iIzNmYzNjNSIvPjxyZWN0IHg9Ijg5OS40IiB5PSIxOTguMCIgd2lkdGg9IjgiIGhlaWdodD0iMjQiIHJ4PSIyLjUiIGZpbGw9IiMzZmMzYzUiLz48L3N2Zz4=";
 const store = { get(){ try { return localStorage.getItem(KEY) || ""; } catch(e){ return ""; } },
@@ -238,7 +256,7 @@ const store = { get(){ try { return localStorage.getItem(KEY) || ""; } catch(e){
                 del(){ try { localStorage.removeItem(KEY); } catch(e){} } };
 function netErr(msg){ const e = new Error(msg || "Sin conexión"); e.red = true; return e; }
 function api(fn){ const args = [].slice.call(arguments,1);
-  return fetch(API_URL, { method: "POST", body: JSON.stringify({ fn: fn, args: args }) })
+  return fetch(API_URL, { method: "POST", body: JSON.stringify(COACH ? { fn: fn, args: args, coach: COACH } : { fn: fn, args: args }) })
     .catch(() => { throw netErr(); })
     .then(r => { if (!r.ok) throw netErr("Sin conexión con el servidor"); return r.json(); })
     .then(j => { if (!j.ok) throw new Error(j.error || "Error"); return j.data; }); }
@@ -275,6 +293,7 @@ const cap = s => s ? s.charAt(0).toUpperCase()+s.slice(1) : s;
 
 function encolar(fn, args){ const q = cola(); q.push({ fn: fn, code: CODE, args: args, t: Date.now() }); setCola(q); guardarCache(); syncUI(); }
 function guardar(fn, ...args){
+  if (COACH) { toast("Modo entrenador: solo lectura", true); return Promise.reject(new Error("Solo lectura")); }
   if (cola().length) { encolar(fn, args); vaciarCola(); return Promise.resolve(true); }
   pend++; syncUI();
   return api(fn, CODE, ...args).then(r=>{ pend--; syncUI(); guardarCache(); return r; })
@@ -305,7 +324,9 @@ function aplicarCola(d){
 /* ========== Carga ========== */
 function cargar(semana){
   app.innerHTML = `<div class="center"><div class="spin"></div><p class="mut small" style="text-align:center;margin-top:14px">Cargando tu rutina…</p></div>`;
-  return api("cargar", CODE, semana || null).then(d=>{ D = aplicarCola(d); store.set(CODE); guardarCache(); if (!BASC) BASC = leerBasc(); route(); vaciarCola();
+  return api("cargar", CODE, semana || null).then(d=>{
+      if (d && d.coach) { COACH = CODE; store.set(CODE); D = null; viewCoach(); return; }
+      D = COACH ? d : aplicarCola(d); if (!COACH) store.set(CODE); guardarCache(); if (!BASC) BASC = leerBasc(); route(); vaciarCola();
       const antes = ctaCheckin();
       refrescarBasc().then(() => { const enInicio = !location.hash.replace("#","") || location.hash === "#inicio"; if (enInicio && ctaCheckin() !== antes) { const y = window.scrollY; viewHome(); window.scrollTo(0, y); } }).catch(()=>{}); })
     .catch(e=>{
@@ -599,6 +620,60 @@ function guardarCheckin(btn){
   }).catch(() => { btn.disabled = false; });
 }
 
+/* ========== Modo entrenador ==========
+   Entrando con el código de la pestaña "Entrenador" del panel: lista de clientes,
+   cuándo usaron la app por última vez y acceso a la app de cada uno en solo lectura. */
+let CLIENTES = null;
+function haceTxt(iso){
+  if (!iso) return "";
+  const dias = Math.floor((Date.now() - new Date(iso).getTime()) / 864e5);
+  if (dias <= 0) { const h = Math.floor((Date.now() - new Date(iso).getTime()) / 36e5); return h <= 0 ? "hace un momento" : h === 1 ? "hace 1 hora" : `hace ${h} horas`; }
+  return dias === 1 ? "ayer" : dias < 30 ? `hace ${dias} días` : new Date(iso).toLocaleDateString("es-ES");
+}
+function estadoCliente(c){
+  if (!c.activo) return ["Acceso desactivado", "st-off", 3];
+  if (!c.acceso) return ["Nunca ha entrado", "st-no", 2];
+  const d = (Date.now() - new Date(c.entreno || c.acceso).getTime()) / 864e5;
+  return d <= 7 ? ["Activo", "st-ok", 0] : ["Sin actividad +7 días", "st-warn", 1];
+}
+function coachUI(){
+  document.body.classList.toggle("coach", !!COACH && !!D);
+  const bar = document.getElementById("coachbar");
+  bar.hidden = !(COACH && D);
+  if (COACH && D) document.getElementById("coachTxt").innerHTML = `Viendo a <b>${esc(COACH_NOMBRE || D.cliente)}</b> · solo lectura`;
+}
+function viewCoach(){
+  D = null; coachUI(); tabbarUI();
+  if (location.hash) history.replaceState(null, "", location.pathname + location.search);
+  pintarCoach();
+  const codigo = CODE;
+  api("clientes").then(l => { CLIENTES = l || []; if (!D && CODE === codigo) pintarCoach(); })
+    .catch(e => { if (!D) app.innerHTML = `<div class="err-box">${esc(e.red ? "Sin conexión. Vuelve a intentarlo cuando tengas cobertura." : e.message)}</div><button class="link" id="salir">Salir del modo entrenador</button>`; });
+}
+function pintarCoach(){
+  let h = `<div class="brand"><div class="logo" style="display:flex;align-items:center;gap:10px"><img src="${LOGO}" alt="" style="width:40px;height:40px;border-radius:10px"><img src="${WM}" alt="Entrenaitor" style="height:24px"></div><span class="pill">Entrenador</span></div>
+  <h1>Tus clientes</h1>`;
+  if (!CLIENTES) { app.innerHTML = h + `<div class="card" style="text-align:center;padding:30px"><div class="spin"></div></div>`; return; }
+  const lista = CLIENTES.slice().sort((a, b) => estadoCliente(a)[2] - estadoCliente(b)[2] || a.nombre.localeCompare(b.nombre));
+  const act = CLIENTES.filter(c => c.activo), usando = act.filter(c => estadoCliente(c)[2] === 0).length;
+  h += `<div class="mut small" style="margin:4px 0 10px">${act.length} con acceso activo · ${usando} han usado la app esta semana</div>`;
+  lista.forEach((c, i) => { const [t, cls] = estadoCliente(c);
+    const ini = (c.nombre.match(/[A-Za-zÁÉÍÓÚÑáéíóúñ]+/g) || ["?"]).map(p => p[0]).join("").slice(0, 2).toUpperCase();
+    const det = c.acceso ? `Entró ${haceTxt(c.acceso)}${c.entreno ? " · Apuntó entreno " + haceTxt(c.entreno) : ""}` : "Aún no ha abierto la app";
+    h += `<button class="cl" data-cli="${CLIENTES.indexOf(c)}"><span class="av">${esc(ini)}</span><span class="ct"><b>${esc(c.nombre)}</b><small>${esc(det)}</small></span><span class="st ${cls}">${t}</span></button>`; });
+  h += `<p class="mut small" style="line-height:1.5;margin-top:14px">Al abrir un cliente ves su app tal cual la ve él, en modo solo lectura. Tus visitas no cuentan como actividad suya.</p>
+  <button class="link" id="salir">Salir del modo entrenador</button>`;
+  app.innerHTML = h;
+}
+function abrirCliente(c){
+  CODE = c.codigo; COACH_NOMBRE = c.nombre; D = null; PROG = null; PROG_SEL = ""; BASC = null;
+  app.innerHTML = `<div class="center"><div class="spin"></div><p class="mut small" style="text-align:center;margin-top:14px">Abriendo la app de ${esc(c.nombre)}…</p></div>`;
+  api("cargar", CODE, null).then(d => { if (CODE !== c.codigo) return; D = d; location.hash = ""; route(); refrescarBasc().catch(()=>{}); })
+    .catch(e => { CODE = COACH; toast(e.message || "No se ha podido abrir", true); viewCoach(); });
+}
+function volverACoach(){ CODE = COACH; COACH_NOMBRE = ""; D = null; PROG = null; BASC = null; viewCoach(); window.scrollTo(0, 0); }
+document.getElementById("coachCambiar").addEventListener("click", volverACoach);
+
 /* ========== Vistas ========== */
 function viewLogin(msg){
   app.innerHTML = `<div class="center">
@@ -723,8 +798,8 @@ function tabbarUI(){
 document.getElementById("tabbar").addEventListener("click", ev => { const b = ev.target.closest("[data-tab]"); if (b) go(b.dataset.tab); });
 function route(){
   document.body.style.overflow = "";
-  tabbarUI();
-  if (!D) return;
+  tabbarUI(); coachUI();
+  if (!D) { if (COACH) viewCoach(); return; }
   const hsh = location.hash.replace("#",""); let m;
   if ((m = hsh.match(/^dia-(\d+)$/))) viewDay(+m[1]);
   else if ((m = hsh.match(/^agujetas-(\d+)$/))) viewDoms(+m[1]);
@@ -744,6 +819,7 @@ app.addEventListener("click", ev=>{
   if (ev.target.id === "prSheet") { abrirSheet(false); return; }
   const t = ev.target.closest("button"); if (!t) return;
   if (t.id === "pr-pick") { abrirSheet(true); return; }
+  if (t.dataset.cli != null && CLIENTES) { const c = CLIENTES[+t.dataset.cli]; if (c) abrirCliente(c); return; }
   if (t.dataset.met) { CUERPO_SEL = t.dataset.met; pintarCuerpo(); return; }
   if (t.id === "saveCheckin") { guardarCheckin(t); return; }
   if (t.dataset.dm != null) { const m = t.dataset.dm, v = +t.dataset.v; DOMS_SEL[m] = v;
@@ -758,7 +834,7 @@ app.addEventListener("click", ev=>{
   if (t.id === "instNo"){ try { localStorage.setItem("entrenaitor_inst_ok","1"); } catch(e){} viewHome(); return; }
   if (t.id === "instCopy"){ const u = enlaceCliente();
     (navigator.clipboard ? navigator.clipboard.writeText(u) : Promise.reject()).then(()=>toast("Enlace copiado. Pégalo en Chrome")).catch(()=>{ window.prompt("Copia este enlace y ábrelo en Chrome:", u); }); return; }
-  if (t.id === "salir"){ store.del(); CODE = ""; D = null; PROG = null; PROG_SEL = ""; BASC = null; location.hash = ""; tabbarUI(); viewLogin(); return; }
+  if (t.id === "salir"){ store.del(); CODE = ""; D = null; PROG = null; PROG_SEL = ""; BASC = null; COACH = ""; COACH_NOMBRE = ""; CLIENTES = null; coachUI(); location.hash = ""; tabbarUI(); viewLogin(); return; }
   if (t.dataset.go){ go(t.dataset.go); return; }
   if (t.dataset.week){ cargar(+t.dataset.week); return; }
   const n = diaActual(), d = n && dia(n);
