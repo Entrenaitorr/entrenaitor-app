@@ -710,7 +710,21 @@ let toT; function toast(m, err){ const el=document.getElementById("toast"); el.t
 
 window.addEventListener("hashchange", route);
 if (CODE) cargar(); else viewLogin();
-if ("serviceWorker" in navigator) { window.addEventListener("load", () => { navigator.serviceWorker.register("sw.js").catch(()=>{}); }); }
+/* Actualización automática: si hay versión nueva, la app se recarga sola
+   (salvo si el cliente está apuntando series o agujetas; entonces espera a que salga de esa pantalla). */
+if ("serviceWorker" in navigator) {
+  let habiaSW = !!navigator.serviceWorker.controller, pendiente = false;
+  const ocupado = () => /^#(dia|agujetas)-/.test(location.hash);
+  const recargar = () => { if (ocupado()) { pendiente = true; return; } location.reload(); };
+  navigator.serviceWorker.addEventListener("controllerchange", () => { if (habiaSW) recargar(); habiaSW = true; });
+  window.addEventListener("hashchange", () => { if (pendiente && !ocupado()) location.reload(); });
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("sw.js").then(reg => {
+      // Al volver a la app (desde otra app o la pantalla de inicio), mirar si hay versión nueva
+      document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") reg.update().catch(()=>{}); });
+    }).catch(()=>{});
+  });
+}
 </script>
 </body>
 </html>
