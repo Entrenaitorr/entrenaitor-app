@@ -22,7 +22,7 @@
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   html,body{margin:0;background:var(--bg);color:var(--txt);font-family:Inter,system-ui,sans-serif;font-size:15px}
-  body{padding:env(safe-area-inset-top) env(safe-area-inset-right) calc(90px + env(safe-area-inset-bottom)) env(safe-area-inset-left)}
+  body{padding:env(safe-area-inset-top) env(safe-area-inset-right) calc(110px + env(safe-area-inset-bottom)) env(safe-area-inset-left)}
   .wrap{max-width:520px;margin:0 auto;padding:16px}
   h1,h2,h3{font-family:"Barlow Condensed",sans-serif;letter-spacing:.02em;margin:0}
   h1{font-size:32px;line-height:1.05} h2{font-size:24px} h1,h2{font-style:italic;font-weight:800}
@@ -82,7 +82,7 @@
   .doms-row span{flex:0 0 120px;font-size:14px;text-transform:capitalize}
   .doms-row input[type=range]{flex:1;accent-color:var(--acc)}
   .doms-row b{width:22px;text-align:right;font-family:"Barlow Condensed";font-size:20px;color:var(--acc-txt)}
-  .timer{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom));width:min(488px,calc(100% - 32px));background:#1f292d;border:1px solid var(--line);border-radius:16px;padding:10px 14px;display:none;align-items:center;gap:10px;box-shadow:0 10px 30px #0008;z-index:10}
+  .timer{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom));width:min(488px,calc(100% - 32px));background:#1f292d;border:1px solid var(--line);border-radius:16px;padding:10px 14px;display:none;align-items:center;gap:10px;box-shadow:0 10px 30px #0008;z-index:10}
   .timer.show{display:flex}
   .timer .t{font-family:"Barlow Condensed";font-size:30px;font-weight:700;min-width:70px}
   .timer.end .t{color:var(--acc-txt)}
@@ -119,6 +119,15 @@
   .desglose{display:grid;gap:6px;font-size:14px;color:var(--mut)}
   .desglose div{display:flex;justify-content:space-between}
   .desglose b{color:var(--txt)}
+  .tabbar{position:fixed;left:0;right:0;bottom:0;z-index:20;background:rgba(11,16,18,.96);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-top:1px solid var(--line);padding:6px 8px calc(6px + env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
+  .tabbar[hidden]{display:none}
+  .tab{display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 0;border:0;background:none;color:var(--mut);font:600 11.5px Inter;text-decoration:none;cursor:pointer;border-radius:12px;max-width:140px;margin:0 auto;width:100%}
+  .tab svg,.tab img{width:26px;height:26px}
+  .tab img{opacity:.55;filter:grayscale(1)}
+  .tab.on img{opacity:1;filter:none}
+  .tab.on{color:var(--acc-txt)}
+  .tab.on .pill-ico{background:#0a2628}
+  .pill-ico{display:flex;align-items:center;justify-content:center;width:52px;height:30px;border-radius:999px}
   .menu-wrap{position:relative}
   .menu-btn{display:flex;align-items:center;gap:10px;background:none;border:0;padding:0;cursor:pointer;color:var(--mut)}
   .menu-btn .chev{transition:transform .2s}
@@ -142,6 +151,11 @@
   <button data-t="-15">−15</button><button data-t="15">+15</button><button data-t="x">✕</button>
 </div>
 <div class="toast" id="toast"></div>
+<nav class="tabbar" id="tabbar" hidden aria-label="Secciones">
+  <button class="tab" data-tab="inicio"><span class="pill-ico"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 7v10M18 7v10M3 10v4M21 10v4M6 12h12"/></svg></span>Entrenos</button>
+  <button class="tab" data-tab="nutricion"><span class="pill-ico"><img src="icons/nutricion.svg" alt=""></span>Nutrición</button>
+  <a class="tab" id="tabWa" href="#" target="_blank" rel="noopener"><span class="pill-ico"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-12.6 7.3L3 20l1.3-5.1A8.5 8.5 0 1 1 21 11.5z"/></svg></span>Aitor</a>
+</nav>
 
 <script>
 var CODIGO_URL = new URLSearchParams(location.search).get("codigo") || "";
@@ -365,15 +379,7 @@ function viewLogin(msg){
 
 function viewHome(){
   const w = D.semana;
-  let h = `<div class="brand"><div class="menu-wrap">
-    <button class="menu-btn" id="menuBtn" aria-label="Abrir menú" aria-expanded="false" aria-controls="menu"><img src="${LOGO}" alt="" style="width:40px;height:40px;border-radius:10px"><img src="${WM}" alt="Entrenaitor" style="height:24px"><svg class="chev" width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button>
-    <div class="menu" id="menu" hidden>
-      <button class="mi" data-go="inicio" data-menu="1"><span class="ico"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 7v10M18 7v10M3 10v4M21 10v4M6 12h12"/></svg></span><span>Mis entrenamientos</span></button>
-      <button class="mi" data-go="nutricion" data-menu="1"><img class="ico" src="icons/nutricion.svg" alt="" style="background:none;padding:0"><span>Calcula tus calorías<small>Calorías y macros para tu objetivo</small></span></button>
-      <a class="mi" href="${esc(waGeneral())}" target="_blank" rel="noopener" data-menu="1"><span class="ico">${WA_ICON}</span><span>Escribir a Aitor<small>Dudas por WhatsApp</small></span></a>
-      <hr>
-      <button class="mi" id="salir" style="color:var(--mut)"><span class="ico" style="color:var(--mut)"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3"/></svg></span><span>Cerrar sesión</span></button>
-    </div></div><span class="pill">Semana ${w}</span></div>
+  let h = `<div class="brand"><div class="logo" style="display:flex;align-items:center;gap:10px"><img src="${LOGO}" alt="" style="width:40px;height:40px;border-radius:10px"><img src="${WM}" alt="Entrenaitor" style="height:24px"></div><span class="pill">Semana ${w}</span></div>
   <h1>Hola, ${esc(D.cliente.split(" ")[0])} 👋</h1>
   <div class="mut small" style="margin-top:4px">Elige semana y día para entrenar</div>
   ${installHTML()}
@@ -389,6 +395,7 @@ function viewHome(){
       ${statusOf(d)[0]==="Completado" && !domsHechas(d) ? `<div class="todo">⏱ A las 48 h: puntúa tus agujetas de este día</div>` : ""}
     </button>`;
   });
+  h += `<button class="link" id="salir">Cerrar sesión</button>`;
   app.innerHTML = h;
 }
 
@@ -454,7 +461,18 @@ function viewDoms(n){
   app.innerHTML = h;
 }
 
+function tabbarUI(){
+  const nav = document.getElementById("tabbar"); if (!nav) return;
+  nav.hidden = !D;
+  if (!D) return;
+  const hsh = location.hash.replace("#","");
+  const actual = hsh === "nutricion" ? "nutricion" : "inicio";
+  nav.querySelectorAll("[data-tab]").forEach(b => { const on = b.dataset.tab === actual; b.classList.toggle("on", on); if (on) b.setAttribute("aria-current","page"); else b.removeAttribute("aria-current"); });
+  document.getElementById("tabWa").href = waGeneral();
+}
+document.getElementById("tabbar").addEventListener("click", ev => { const b = ev.target.closest("[data-tab]"); if (b) go(b.dataset.tab); });
 function route(){
+  tabbarUI();
   if (!D) return;
   const hsh = location.hash.replace("#",""); let m;
   if ((m = hsh.match(/^dia-(\d+)$/))) viewDay(+m[1]);
@@ -476,8 +494,7 @@ app.addEventListener("click", ev=>{
   if (t.id === "instNo"){ try { localStorage.setItem("entrenaitor_inst_ok","1"); } catch(e){} viewHome(); return; }
   if (t.id === "instCopy"){ const u = enlaceCliente();
     (navigator.clipboard ? navigator.clipboard.writeText(u) : Promise.reject()).then(()=>toast("Enlace copiado. Pégalo en Chrome")).catch(()=>{ window.prompt("Copia este enlace y ábrelo en Chrome:", u); }); return; }
-  if (t.id === "salir"){ store.del(); CODE = ""; D = null; location.hash = ""; viewLogin(); return; }
-  if (t.id === "menuBtn"){ const m = document.getElementById("menu"), abierto = m.hidden; m.hidden = !abierto; t.setAttribute("aria-expanded", String(abierto)); if (abierto) m.querySelector(".mi").focus(); return; }
+  if (t.id === "salir"){ store.del(); CODE = ""; D = null; location.hash = ""; tabbarUI(); viewLogin(); return; }
   if (t.dataset.go){ go(t.dataset.go); return; }
   if (t.dataset.week){ cargar(+t.dataset.week); return; }
   const n = diaActual(), d = n && dia(n);
@@ -516,8 +533,6 @@ app.addEventListener("click", ev=>{
 });
 function viewDayKeep(n){ const y = window.scrollY; viewDay(n); window.scrollTo(0,y); }
 
-document.addEventListener("click", ev=>{ const m = document.getElementById("menu"); if (m && !m.hidden && !ev.target.closest(".menu-wrap")) { m.hidden = true; document.getElementById("menuBtn").setAttribute("aria-expanded","false"); } });
-app.addEventListener("keydown", ev=>{ if (ev.key === "Escape") { const m = document.getElementById("menu"); if (m && !m.hidden) { m.hidden = true; document.getElementById("menuBtn").setAttribute("aria-expanded","false"); document.getElementById("menuBtn").focus(); } } });
 app.addEventListener("keydown", ev=>{ if (ev.key==="Enter" && ev.target.id==="cod") document.getElementById("entrar").click(); });
 app.addEventListener("input", ev=>{ if (ev.target.type==="range") ev.target.nextElementSibling.textContent = ev.target.value;
   if (ev.target.dataset.n){ const d = nutriDatos(); d[ev.target.dataset.n] = ev.target.dataset.n === "act" ? +ev.target.value : ev.target.value.trim(); nutriGuardar(d); nutriActualizar(); } });
