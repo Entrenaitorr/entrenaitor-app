@@ -435,7 +435,7 @@ function abrirSheet(abrir){ const el = document.getElementById("prSheet"); if (!
   if (abrir) { const on = el.querySelector(".sheet-it.on"); if (on) on.scrollIntoView({ block: "center" }); } }
 function pintarProgreso(){
   let h = `<div class="brand"><h1>Progreso</h1></div>
-  <div class="mut small">Tu RM estimado por semana: el peso que podrías levantar a 1 repetición, calculado con tus series.</div>`;
+  <div class="mut small">Tu RM estimado por semana: el peso que podrías levantar a 1 repetición, calculado con tus series. Nos sirve para ver cómo avanzas y ajustar tu entrenamiento juntos.</div>`;
   if (PROG_ERR) h += `<div class="err-box">${esc(PROG_ERR)}</div>`;
   if (!PROG) { app.innerHTML = h + `<div class="card" style="text-align:center;padding:30px"><div class="spin"></div></div>`; return; }
   const lista = PROG.filter(e => e.p && e.p.length);
