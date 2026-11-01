@@ -169,6 +169,25 @@
   @keyframes sube{from{transform:translateY(40px);opacity:.4}to{transform:none;opacity:1}}
   @keyframes fade{from{opacity:0}to{opacity:1}}
   .chart{width:100%;height:auto;display:block;margin-top:6px}
+  .pseg{display:grid;grid-template-columns:1fr 1fr;gap:4px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:4px;margin:10px 0 12px}
+  .pseg button{border:0;border-radius:9px;padding:9px 0;font:600 14px Inter;background:none;color:var(--mut);cursor:pointer}
+  .pseg button.on{background:var(--acc);color:#fff}
+  .grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  .mets{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:12px 0}
+  .met{text-align:left;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:11px 12px;color:var(--txt);cursor:pointer;font:inherit}
+  .met.on{border-color:var(--acc-txt);box-shadow:inset 0 0 0 1px var(--acc-txt)}
+  .met small{display:block;color:var(--mut);font-size:12px}
+  .met b{display:block;font:700 24px "Barlow Condensed",sans-serif;margin-top:2px}
+  .met b u{text-decoration:none;font-size:15px;color:var(--mut);margin-left:3px}
+  .met i{font-style:normal;font-size:12px;color:var(--mut)}
+  .cta-checkin{display:flex;align-items:center;gap:12px;width:100%;text-align:left;border:1px solid #11484a;background:#0a2628;color:var(--txt);border-radius:16px;padding:14px;margin:10px 0;cursor:pointer;font:inherit}
+  .cta-checkin svg{flex:0 0 auto;color:var(--acc-txt)}
+  .cta-checkin b{display:block;font:700 19px "Barlow Condensed",sans-serif;letter-spacing:.02em}
+  .cta-checkin small{color:#a9e2e3;font-size:12.5px}
+  .hist{width:100%;border-collapse:collapse;font-size:13.5px}
+  .hist td{padding:8px 4px;border-top:1px solid var(--line)}
+  .hist td:last-child{text-align:right;color:var(--mut)}
+  .field-err{color:#ff6b6b;font-size:12.5px;margin-top:8px}
   .stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:12px 0}
   .stat{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:11px 12px}
   .stat small{display:block;color:var(--mut);font-size:12px}
@@ -286,7 +305,9 @@ function aplicarCola(d){
 /* ========== Carga ========== */
 function cargar(semana){
   app.innerHTML = `<div class="center"><div class="spin"></div><p class="mut small" style="text-align:center;margin-top:14px">Cargando tu rutina…</p></div>`;
-  return api("cargar", CODE, semana || null).then(d=>{ D = aplicarCola(d); store.set(CODE); guardarCache(); route(); vaciarCola(); })
+  return api("cargar", CODE, semana || null).then(d=>{ D = aplicarCola(d); store.set(CODE); guardarCache(); if (!BASC) BASC = leerBasc(); route(); vaciarCola();
+      const antes = ctaCheckin();
+      refrescarBasc().then(() => { const enInicio = !location.hash.replace("#","") || location.hash === "#inicio"; if (enInicio && ctaCheckin() !== antes) { const y = window.scrollY; viewHome(); window.scrollTo(0, y); } }).catch(()=>{}); })
     .catch(e=>{
       const c = e.red ? leerCache(semana) : null;
       if (c) { D = aplicarCola(c); route(); toast("Sin conexión: te enseño la última versión guardada"); return; }
@@ -427,21 +448,23 @@ function viewProgreso(){
   api("progreso", CODE).then(p => { PROG = p || []; PROG_ERR = ""; guardarProg(PROG); if (location.hash === "#progreso") pintarProgreso(); })
     .catch(e => { PROG_ERR = e.red ? "Sin conexión: mostrando los últimos datos guardados." : e.message; if (location.hash === "#progreso") pintarProgreso(); });
 }
-function graficaRM(p){
+function graficaRM(p, lab, ajustado){
+  lab = lab || (x => "S" + x[0]);
   const W = 340, H = 190, L = 34, R = 14, T = 22, B = 26;
   const vals = p.map(x => x[1]), mx = Math.max.apply(null, vals), mn = Math.min.apply(null, vals);
-  const lo = Math.max(0, mn - (mx - mn) * 0.25 - 2), hi = mx + (mx - mn) * 0.12 + 2;
+  const pad = ajustado ? Math.max((mx - mn) * 0.25, Math.abs(mx) * 0.015, 0.5) : 2;
+  const lo = Math.max(0, mn - (ajustado ? pad : (mx - mn) * 0.25 + pad)), hi = mx + (ajustado ? pad : (mx - mn) * 0.12 + pad);
   const X = i => p.length === 1 ? (L + W - R) / 2 : L + i * (W - L - R) / (p.length - 1);
   const Y = v => T + (H - T - B) * (1 - (v - lo) / (hi - lo));
   const iMax = vals.indexOf(mx), cada = p.length > 10 ? 2 : 1;
   let g = `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="RM estimado por semana">`;
-  [lo, (lo + hi) / 2, hi].forEach(v => { g += `<line x1="${L}" x2="${W - R}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--line)"/><text x="${L - 6}" y="${Y(v) + 4}" text-anchor="end" font-size="11" fill="var(--mut)">${Math.round(v)}</text>`; });
+  [lo, (lo + hi) / 2, hi].forEach(v => { g += `<line x1="${L}" x2="${W - R}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--line)"/><text x="${L - 6}" y="${Y(v) + 4}" text-anchor="end" font-size="11" fill="var(--mut)">${ajustado && hi - lo < 6 ? kg1(v) : Math.round(v)}</text>`; });
   if (p.length > 1) g += `<polyline fill="none" stroke="var(--acc)" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" points="${p.map((x, i) => X(i) + "," + Y(x[1])).join(" ")}"/>`;
   p.forEach((x, i) => {
     const best = i === iMax, last = i === p.length - 1;
     g += `<circle cx="${X(i)}" cy="${Y(x[1])}" r="${best ? 6 : 4}" fill="${best ? "#ffffff" : "var(--acc-txt)"}"/>`;
     if (best || last || i === 0) g += `<text x="${X(i)}" y="${Y(x[1]) - 10}" text-anchor="middle" font-size="11.5" font-weight="600" fill="var(--txt)">${kg1(x[1])}</text>`;
-    if (i % cada === 0 || last) g += `<text x="${X(i)}" y="${H - 6}" text-anchor="middle" font-size="11" fill="var(--mut)">S${x[0]}</text>`;
+    if (i % cada === 0 || last) g += `<text x="${X(i)}" y="${H - 6}" text-anchor="middle" font-size="11" fill="var(--mut)">${esc(lab(x))}</text>`;
   });
   return g + `</svg>`;
 }
@@ -451,7 +474,7 @@ const CHEV = '<svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"
 function abrirSheet(abrir){ const el = document.getElementById("prSheet"); if (!el) return; el.hidden = !abrir; document.body.style.overflow = abrir ? "hidden" : "";
   if (abrir) { const on = el.querySelector(".sheet-it.on"); if (on) on.scrollIntoView({ block: "center" }); } }
 function pintarProgreso(){
-  let h = `<div class="brand"><h1>Progreso</h1></div>
+  let h = `<div class="brand"><h1>Progreso</h1></div>${segProgreso("fuerza")}
   <div class="mut small">Tu RM estimado por semana: el peso que podrías levantar a 1 repetición, calculado con tus series. Nos sirve para ver cómo avanzas y ajustar tu entrenamiento juntos.</div>`;
   if (PROG_ERR) h += `<div class="err-box">${esc(PROG_ERR)}</div>`;
   if (!PROG) { app.innerHTML = h + `<div class="card" style="text-align:center;padding:30px"><div class="spin"></div></div>`; return; }
@@ -483,6 +506,99 @@ function pintarProgreso(){
   PROG_LISTA = lista;
 }
 
+/* ========== Cuerpo: check-in semanal de la báscula ==========
+   Se guarda en la pestaña "Báscula (app)" de la hoja del cliente
+   y el peso se copia también a "Seguimiento Semanal". */
+const BKEY = "entrenaitor_bascula";
+let BASC = null, CUERPO_SEL = "peso", BASC_ERR = "";
+const MET = [
+  { k: "peso", t: "Peso", u: "kg", min: 25, max: 300, ob: true },
+  { k: "grasa", t: "Grasa corporal", u: "%", min: 2, max: 70 },
+  { k: "musculo", t: "Masa muscular", u: "kg", min: 10, max: 150 },
+  { k: "imc", t: "IMC", u: "", min: 10, max: 70 },
+  { k: "visceral", t: "Grasa visceral", u: "", min: 1, max: 60 },
+  { k: "agua", t: "Agua corporal", u: "%", min: 20, max: 80 }];
+const hoyISO = () => { const d = new Date(); return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0"); };
+const lunesISO = iso => { const d = new Date(iso + "T12:00:00"); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0"); };
+const fCorta = iso => { const p = String(iso).split("-"); return p[2] + "/" + p[1]; };
+function mezclarBasc(lista, datos){
+  const l = (lista || []).filter(x => lunesISO(x.f) !== lunesISO(datos.fecha));
+  const o = { f: datos.fecha }; MET.forEach(m => { const v = parseFloat(String(datos[m.k] ?? "").replace(",", ".")); o[m.k] = isNaN(v) ? null : v; });
+  return l.concat([o]).sort((a, b) => a.f < b.f ? -1 : 1);
+}
+function leerBasc(){ let b = null; try { b = (JSON.parse(localStorage.getItem(BKEY)) || {})[CODE] || null; } catch(e){}
+  cola().filter(it => it.fn === "guardarBascula" && it.code === CODE).forEach(it => { b = mezclarBasc(b, it.args[0]); }); return b; }
+function guardarBasc(b){ try { const c = JSON.parse(localStorage.getItem(BKEY)) || {}; c[CODE] = b; localStorage.setItem(BKEY, JSON.stringify(c)); } catch(e){} }
+function refrescarBasc(){ return api("bascula", CODE).then(b => { BASC = b || []; cola().filter(it => it.fn === "guardarBascula" && it.code === CODE).forEach(it => { BASC = mezclarBasc(BASC, it.args[0]); }); BASC_ERR = ""; guardarBasc(BASC); return BASC; }); }
+const registroSemana = () => (BASC || []).find(x => lunesISO(x.f) === lunesISO(hoyISO()));
+function segProgreso(on){ return `<div class="pseg" role="tablist"><button role="tab" class="${on==="fuerza"?"on":""}" aria-selected="${on==="fuerza"}" data-go="progreso">Fuerza</button><button role="tab" class="${on==="cuerpo"?"on":""}" aria-selected="${on==="cuerpo"}" data-go="cuerpo">Cuerpo</button></div>`; }
+const ICO_BASC = '<svg width="30" height="30" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="5"/><path d="M8.5 9.5a5 5 0 0 1 7 0"/><path d="M12 9.5l1.4-1.6"/></svg>';
+function ctaCheckin(){
+  const d = new Date().getDay();
+  if (!(d === 5 || d === 6 || d === 0) || registroSemana()) return "";
+  return `<button class="cta-checkin" data-go="checkin">${ICO_BASC}<span><b>Toca tu check-in semanal</b><small>Apunta lo que marca tu báscula. Es un minuto.</small></span></button>`;
+}
+function viewCuerpo(){
+  if (!BASC) BASC = leerBasc();
+  pintarCuerpo();
+  refrescarBasc().then(() => { if (location.hash === "#cuerpo") pintarCuerpo(); })
+    .catch(e => { BASC_ERR = e.red ? "Sin conexión: mostrando los últimos datos guardados." : e.message; if (location.hash === "#cuerpo") pintarCuerpo(); });
+}
+function pintarCuerpo(){
+  let h = `<div class="brand"><h1>Progreso</h1></div>${segProgreso("cuerpo")}
+  <div class="mut small" style="line-height:1.5">Tu evolución semana a semana con los datos de la báscula. Nos sirve para ver si el plan está funcionando y ajustarlo juntos.</div>`;
+  if (BASC_ERR) h += `<div class="err-box">${esc(BASC_ERR)}</div>`;
+  if (!BASC) { app.innerHTML = h + `<div class="card" style="text-align:center;padding:30px"><div class="spin"></div></div>`; return; }
+  const ya = registroSemana();
+  h += `<button class="btn" data-go="checkin" style="margin-top:12px">${ya ? "Editar el registro de esta semana" : "Hacer el check-in de esta semana"}</button>`;
+  if (!BASC.length) {
+    app.innerHTML = h + `<div class="card"><b>Aún no tienes registros</b><p class="mut small" style="margin:6px 0 0;line-height:1.5">Cada viernes o fin de semana, pésate en ayunas y apunta lo que marca tu báscula. Aquí irás viendo tu evolución.</p></div>`;
+    return;
+  }
+  const disp = MET.filter(m => BASC.some(x => x[m.k] != null));
+  if (!disp.find(m => m.k === CUERPO_SEL)) CUERPO_SEL = disp[0].k;
+  h += `<div class="mets">${disp.map(m => {
+    const serie = BASC.filter(x => x[m.k] != null), u = serie[serie.length-1], p0 = serie[0];
+    const dif = serie.length > 1 ? Math.round((u[m.k] - p0[m.k]) * 10) / 10 : null;
+    return `<button class="met ${m.k===CUERPO_SEL?"on":""}" data-met="${m.k}"><small>${m.t}</small><b>${kg1(u[m.k])}${m.u ? `<u>${m.u}</u>` : ""}</b><i>${dif === null ? fCorta(u.f) : (dif > 0 ? "+" : dif < 0 ? "−" : "") + kg1(Math.abs(dif)) + (m.u ? " " + m.u : "") + " desde " + fCorta(p0.f)}</i></button>`; }).join("")}</div>`;
+  const m = MET.find(x => x.k === CUERPO_SEL), serie = BASC.filter(x => x[m.k] != null);
+  h += `<div class="card"><div class="mut small">${m.t}${m.u ? " (" + m.u + ")" : ""}</div>${graficaRM(serie.map(x => [x.f, x[m.k]]), x => fCorta(x[0]), true)}</div>`;
+  const ult = BASC.slice(-6).reverse();
+  h += `<div class="card"><div class="mut small" style="margin-bottom:4px">Últimos registros</div><table class="hist">${ult.map(x => `<tr><td>${fCorta(x.f)}</td><td><b>${x.peso != null ? kg1(x.peso) + " kg" : "–"}</b></td><td>${x.grasa != null ? kg1(x.grasa) + " % grasa" : ""}</td></tr>`).join("")}</table></div>`;
+  h += `<a class="wa" href="${esc(waLink(`Hola Aitor, soy ${nombreCliente()}. Tengo una duda con mi evolución de la báscula: `))}" target="_blank" rel="noopener">${WA_ICON}Pregunta a Aitor por tu evolución</a>`;
+  app.innerHTML = h;
+}
+function viewCheckin(){
+  if (!BASC) BASC = leerBasc();
+  const r = registroSemana() || {};
+  const val = k => r[k] != null ? String(r[k]).replace(".", ",") : "";
+  app.innerHTML = `<button class="back" data-go="cuerpo">← Progreso</button>
+  <h1>Check-in semanal</h1>
+  <div class="mut small" style="margin:6px 0 4px;line-height:1.5">Pésate en ayunas, después de ir al baño, y apunta lo que marca tu báscula. Solo el peso es obligatorio.</div>
+  <div class="card">
+    <label class="lb" for="ck-fecha" style="margin-top:0">Fecha</label>
+    <input class="txt" type="date" id="ck-fecha" value="${r.f || hoyISO()}" max="${hoyISO()}">
+    <div class="grid2" style="margin-top:4px">${MET.map(m => `<div><label class="lb" for="ck-${m.k}">${m.t}${m.u ? " (" + m.u + ")" : ""}${m.ob ? " *" : ""}</label><input class="txt" id="ck-${m.k}" data-ck="${m.k}" inputmode="decimal" autocomplete="off" value="${val(m.k)}" placeholder="${m.ob ? "Obligatorio" : "Opcional"}"></div>`).join("")}</div>
+    <div class="field-err" id="ck-err" hidden></div>
+  </div>
+  <button class="btn" id="saveCheckin">Guardar check-in</button>`;
+}
+function guardarCheckin(btn){
+  const err = document.getElementById("ck-err"), datos = { fecha: document.getElementById("ck-fecha").value || hoyISO(), semana: D ? D.semana : null };
+  let fallo = "";
+  MET.forEach(m => { const raw = document.getElementById("ck-" + m.k).value.trim(), v = parseFloat(raw.replace(",", "."));
+    if (raw === "") { if (m.ob) fallo = fallo || "Apunta tu peso para guardar el check-in."; datos[m.k] = ""; return; }
+    if (isNaN(v) || v < m.min || v > m.max) fallo = fallo || `Revisa ${m.t.toLowerCase()}: debe estar entre ${m.min} y ${m.max}.`;
+    datos[m.k] = v; });
+  if (datos.fecha > hoyISO()) fallo = fallo || "La fecha no puede ser futura.";
+  if (fallo) { err.textContent = fallo; err.hidden = false; return; }
+  err.hidden = true; btn.disabled = true;
+  guardar("guardarBascula", datos).then(r => {
+    BASC = Array.isArray(r) ? r : mezclarBasc(BASC, datos); guardarBasc(BASC);
+    toast("Check-in guardado"); go("cuerpo");
+  }).catch(() => { btn.disabled = false; });
+}
+
 /* ========== Vistas ========== */
 function viewLogin(msg){
   app.innerHTML = `<div class="center">
@@ -504,6 +620,7 @@ function viewHome(){
   ${installHTML()}
   ${cola().length ? `<div class="todo" style="background:#33290f;color:#fcd68a">⏳ Tienes ${cola().length} dato(s) pendientes de enviar. Se mandan solos cuando haya conexión.</div>` : ""}
   <div class="weeks">${D.semanas.map(n=>`<button class="${n===w?'on':''}" data-week="${n}">Semana ${n}</button>`).join("")}</div>`;
+  h += ctaCheckin();
   D.dias.forEach(d=>{
     const [st,cls] = statusOf(d), c = counts(d);
     h += `<button class="card day" data-go="dia-${d.n}">
@@ -599,7 +716,7 @@ function tabbarUI(){
   nav.hidden = !D;
   if (!D) return;
   const hsh = location.hash.replace("#","");
-  const actual = (hsh === "nutricion" || hsh === "progreso") ? hsh : "inicio";
+  const actual = hsh === "nutricion" ? hsh : (hsh === "progreso" || hsh === "cuerpo" || hsh === "checkin") ? "progreso" : "inicio";
   nav.querySelectorAll("[data-tab]").forEach(b => { const on = b.dataset.tab === actual; b.classList.toggle("on", on); if (on) b.setAttribute("aria-current","page"); else b.removeAttribute("aria-current"); });
   document.getElementById("tabWa").href = waGeneral();
 }
@@ -613,6 +730,8 @@ function route(){
   else if ((m = hsh.match(/^agujetas-(\d+)$/))) viewDoms(+m[1]);
   else if (hsh === "nutricion") viewNutri();
   else if (hsh === "progreso") viewProgreso();
+  else if (hsh === "cuerpo") viewCuerpo();
+  else if (hsh === "checkin") viewCheckin();
   else viewHome();
   window.scrollTo(0,0);
 }
@@ -625,6 +744,8 @@ app.addEventListener("click", ev=>{
   if (ev.target.id === "prSheet") { abrirSheet(false); return; }
   const t = ev.target.closest("button"); if (!t) return;
   if (t.id === "pr-pick") { abrirSheet(true); return; }
+  if (t.dataset.met) { CUERPO_SEL = t.dataset.met; pintarCuerpo(); return; }
+  if (t.id === "saveCheckin") { guardarCheckin(t); return; }
   if (t.dataset.dm != null) { const m = t.dataset.dm, v = +t.dataset.v; DOMS_SEL[m] = v;
     const row = t.closest(".dm-row"); row.classList.remove("falta"); row.setAttribute("style", dmVar(v));
     row.querySelectorAll(".dm-b").forEach(b => { const on = +b.dataset.v === v; b.classList.toggle("on", on); b.setAttribute("aria-checked", on); });
@@ -637,7 +758,7 @@ app.addEventListener("click", ev=>{
   if (t.id === "instNo"){ try { localStorage.setItem("entrenaitor_inst_ok","1"); } catch(e){} viewHome(); return; }
   if (t.id === "instCopy"){ const u = enlaceCliente();
     (navigator.clipboard ? navigator.clipboard.writeText(u) : Promise.reject()).then(()=>toast("Enlace copiado. Pégalo en Chrome")).catch(()=>{ window.prompt("Copia este enlace y ábrelo en Chrome:", u); }); return; }
-  if (t.id === "salir"){ store.del(); CODE = ""; D = null; PROG = null; PROG_SEL = ""; location.hash = ""; tabbarUI(); viewLogin(); return; }
+  if (t.id === "salir"){ store.del(); CODE = ""; D = null; PROG = null; PROG_SEL = ""; BASC = null; location.hash = ""; tabbarUI(); viewLogin(); return; }
   if (t.dataset.go){ go(t.dataset.go); return; }
   if (t.dataset.week){ cargar(+t.dataset.week); return; }
   const n = diaActual(), d = n && dia(n);
