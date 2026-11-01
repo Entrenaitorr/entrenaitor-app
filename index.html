@@ -100,6 +100,9 @@
   .install .row{display:flex;gap:8px;flex-wrap:wrap}
   .install button{border:0;border-radius:10px;padding:9px 14px;font:600 14px Inter;cursor:pointer;background:var(--acc);color:#fff}
   .install button.sec{background:transparent;color:#a9e2e3;border:1px solid #11484a}
+  .wa{display:inline-flex;align-items:center;gap:6px;text-decoration:none;font:600 13px Inter;color:#a9e2e3;border:1px solid #11484a;border-radius:999px;padding:6px 12px;background:#0a2628}
+  .wa svg{flex:0 0 auto}
+  .wa.big{display:flex;justify-content:center;width:100%;box-sizing:border-box;padding:13px;border-radius:14px;font-size:15px;margin-top:14px}
   .err-box{background:#2a1212;border:1px solid #5a2323;color:#fca5a5;border-radius:12px;padding:10px 12px;font-size:14px;margin-top:12px}
 </style>
 </head>
@@ -227,6 +230,14 @@ function installHTML(){
 }
 function enlaceCliente(){ return location.origin + location.pathname + (CODE ? "?codigo=" + encodeURIComponent(CODE) : ""); }
 
+/* ========== WhatsApp con el entrenador ========== */
+const WA_NUM = "34620772316";
+const WA_ICON = '<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-12.6 7.3L3 20l1.3-5.1A8.5 8.5 0 1 1 21 11.5z"/></svg>';
+function waLink(texto){ return "https://wa.me/" + WA_NUM + "?text=" + encodeURIComponent(texto); }
+function nombreCliente(){ return D && D.cliente ? D.cliente.split(" ")[0] : ""; }
+function waEjercicio(e, n){ return waLink(`Hola Aitor, soy ${nombreCliente()}. Tengo una duda con "${e.titulo}" (Día ${n}, Semana ${D.semana}): `); }
+function waGeneral(){ return waLink(`Hola Aitor, soy ${nombreCliente()}. Te escribo desde la app: `); }
+
 /* ========== Vistas ========== */
 function viewLogin(msg){
   app.innerHTML = `<div class="center">
@@ -258,6 +269,7 @@ function viewHome(){
       ${statusOf(d)[0]==="Completado" && !domsHechas(d) ? `<div class="todo">⏱ A las 48 h: puntúa tus agujetas de este día</div>` : ""}
     </button>`;
   });
+  h += `<a class="wa big" href="${esc(waGeneral())}" target="_blank" rel="noopener">${WA_ICON}Escribir a Aitor por WhatsApp</a>`;
   h += `<button class="link" id="salir">Cerrar sesión</button>`;
   app.innerHTML = h;
 }
@@ -283,6 +295,7 @@ function viewDay(n){
     ${e.musculos?`<div class="chips">${e.musculos.split(",").map(m=>`<span>${esc(cap(m.trim()))}</span>`).join("")}</div>`:""}
     <div class="target"><span>Series <b>${o.series}</b></span>${o.reps?`<span>Reps <b>${esc(o.reps)}</b></span>`:""}${o.rir.some(Boolean)?`<span>RIR <b>${o.rir.map(r=>esc(r||"–")).join(" / ")}</b></span>`:""}${o.pausa?`<span>Pausa <b>${esc(o.pausa)}</b></span>`:""}${o.tecnica?`<span>Técnica <b>${esc(o.tecnica)}</b></span>`:""}</div>
     <table><tr><th>Serie</th><th>Reps</th><th>Kg</th><th>RIR</th><th></th></tr>`;
+    const waBtn = `<a class="wa" href="${esc(waEjercicio(e, n))}" target="_blank" rel="noopener">${WA_ICON}Duda con este ejercicio</a>`;
     for (let j=0;j<o.series;j++){
       const v = e.sets[j] || {reps:"",kg:"",rir:""}, p = e.prev[j], k = i+"-"+j, done = hecho(v);
       h += `<tr class="${done?'done':''}" id="r${k}">
@@ -293,7 +306,7 @@ function viewDay(n){
         <td><button class="chk ${done?'on':''}" data-chk="${k}" aria-label="Serie hecha">✓</button></td></tr>`;
       if (p && p.reps) h += `<tr class="prev"><td></td><td colspan="4">Semana ${D.semanaPrevia}: ${esc(p.reps||"–")} reps × ${esc(p.kg||"–")} kg · RIR ${esc(p.rir||"–")}</td></tr>`;
     }
-    h += `</table></div>`;
+    h += `</table><div style="margin-top:10px">${waBtn}</div></div>`;
   });
 
   const fin = String(d.rpe).trim()!=="";
