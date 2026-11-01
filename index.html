@@ -119,6 +119,17 @@
   .desglose{display:grid;gap:6px;font-size:14px;color:var(--mut)}
   .desglose div{display:flex;justify-content:space-between}
   .desglose b{color:var(--txt)}
+  .menu-wrap{position:relative}
+  .menu-btn{display:flex;align-items:center;gap:10px;background:none;border:0;padding:0;cursor:pointer;color:var(--mut)}
+  .menu-btn .chev{transition:transform .2s}
+  .menu-btn[aria-expanded="true"] .chev{transform:rotate(180deg)}
+  .menu{position:absolute;top:52px;left:0;z-index:30;background:#141b1e;border:1px solid var(--line);border-radius:16px;min-width:260px;padding:6px;box-shadow:0 14px 40px #000a}
+  .menu[hidden]{display:none}
+  .mi{display:flex;align-items:center;gap:12px;width:100%;box-sizing:border-box;padding:12px;border:0;background:none;color:var(--txt);font:600 15px Inter;text-decoration:none;border-radius:10px;cursor:pointer;text-align:left}
+  .mi:hover,.mi:focus-visible{background:var(--card2);outline:none}
+  .mi .ico{width:30px;height:30px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;border-radius:8px;background:var(--card2);color:var(--acc-txt)}
+  .mi small{display:block;font:500 12px Inter;color:var(--mut);margin-top:2px}
+  .menu hr{border:0;border-top:1px solid var(--line);margin:6px 4px}
   .nutri-card{display:flex;align-items:center;gap:14px;width:100%;text-align:left;color:inherit;font:inherit;cursor:pointer}
   .err-box{background:#2a1212;border:1px solid #5a2323;color:#fca5a5;border-radius:12px;padding:10px 12px;font-size:14px;margin-top:12px}
 </style>
@@ -320,7 +331,7 @@ function viewNutri(){
   const d = nutriDatos();
   const segBtn = (grp, val, txt, on) => `<button data-nseg="${grp}" data-v="${val}" class="${on ? "on" : ""}">${txt}</button>`;
   app.innerHTML = `<button class="back" data-go="inicio">← Volver</button>
-  <div class="brand"><h1>Nutrición</h1><img src="icons/sello-nutricion.svg" alt="" style="width:56px;height:56px"></div>
+  <div class="brand"><h1>Nutrición</h1><img src="icons/nutricion.svg" alt="" style="width:56px;height:56px"></div>
   <div class="mut small">Calcula tus calorías y macros para empezar</div>
   <div class="card" id="nutri">
     <label class="lb" style="margin-top:0">Objetivo</label>
@@ -354,7 +365,15 @@ function viewLogin(msg){
 
 function viewHome(){
   const w = D.semana;
-  let h = `<div class="brand"><div class="logo" style="display:flex;align-items:center;gap:10px"><img src="${LOGO}" alt="" style="width:40px;height:40px;border-radius:10px"><img src="${WM}" alt="Entrenaitor" style="height:24px"></div><span class="pill">Semana ${w}</span></div>
+  let h = `<div class="brand"><div class="menu-wrap">
+    <button class="menu-btn" id="menuBtn" aria-label="Abrir menú" aria-expanded="false" aria-controls="menu"><img src="${LOGO}" alt="" style="width:40px;height:40px;border-radius:10px"><img src="${WM}" alt="Entrenaitor" style="height:24px"><svg class="chev" width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button>
+    <div class="menu" id="menu" hidden>
+      <button class="mi" data-go="inicio" data-menu="1"><span class="ico"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 7v10M18 7v10M3 10v4M21 10v4M6 12h12"/></svg></span><span>Mis entrenamientos</span></button>
+      <button class="mi" data-go="nutricion" data-menu="1"><img class="ico" src="icons/nutricion.svg" alt="" style="background:none;padding:0"><span>Calcula tus calorías<small>Calorías y macros para tu objetivo</small></span></button>
+      <a class="mi" href="${esc(waGeneral())}" target="_blank" rel="noopener" data-menu="1"><span class="ico">${WA_ICON}</span><span>Escribir a Aitor<small>Dudas por WhatsApp</small></span></a>
+      <hr>
+      <button class="mi" id="salir" style="color:var(--mut)"><span class="ico" style="color:var(--mut)"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3"/></svg></span><span>Cerrar sesión</span></button>
+    </div></div><span class="pill">Semana ${w}</span></div>
   <h1>Hola, ${esc(D.cliente.split(" ")[0])} 👋</h1>
   <div class="mut small" style="margin-top:4px">Elige semana y día para entrenar</div>
   ${installHTML()}
@@ -370,9 +389,6 @@ function viewHome(){
       ${statusOf(d)[0]==="Completado" && !domsHechas(d) ? `<div class="todo">⏱ A las 48 h: puntúa tus agujetas de este día</div>` : ""}
     </button>`;
   });
-  h += `<button class="card nutri-card" data-go="nutricion"><img src="icons/sello-nutricion.svg" alt="" style="width:58px;height:58px;flex:0 0 auto"><span style="display:flex;flex-direction:column;gap:3px"><b style="font-size:17px">Nutrición</b><span class="mut small">Calcula tus calorías y macros</span></span><span style="margin-left:auto;color:var(--acc-txt);font-size:22px">›</span></button>`;
-  h += `<a class="wa big" href="${esc(waGeneral())}" target="_blank" rel="noopener">${WA_ICON}Escribir a Aitor por WhatsApp</a>`;
-  h += `<button class="link" id="salir">Cerrar sesión</button>`;
   app.innerHTML = h;
 }
 
@@ -461,6 +477,7 @@ app.addEventListener("click", ev=>{
   if (t.id === "instCopy"){ const u = enlaceCliente();
     (navigator.clipboard ? navigator.clipboard.writeText(u) : Promise.reject()).then(()=>toast("Enlace copiado. Pégalo en Chrome")).catch(()=>{ window.prompt("Copia este enlace y ábrelo en Chrome:", u); }); return; }
   if (t.id === "salir"){ store.del(); CODE = ""; D = null; location.hash = ""; viewLogin(); return; }
+  if (t.id === "menuBtn"){ const m = document.getElementById("menu"), abierto = m.hidden; m.hidden = !abierto; t.setAttribute("aria-expanded", String(abierto)); if (abierto) m.querySelector(".mi").focus(); return; }
   if (t.dataset.go){ go(t.dataset.go); return; }
   if (t.dataset.week){ cargar(+t.dataset.week); return; }
   const n = diaActual(), d = n && dia(n);
@@ -499,6 +516,8 @@ app.addEventListener("click", ev=>{
 });
 function viewDayKeep(n){ const y = window.scrollY; viewDay(n); window.scrollTo(0,y); }
 
+document.addEventListener("click", ev=>{ const m = document.getElementById("menu"); if (m && !m.hidden && !ev.target.closest(".menu-wrap")) { m.hidden = true; document.getElementById("menuBtn").setAttribute("aria-expanded","false"); } });
+app.addEventListener("keydown", ev=>{ if (ev.key === "Escape") { const m = document.getElementById("menu"); if (m && !m.hidden) { m.hidden = true; document.getElementById("menuBtn").setAttribute("aria-expanded","false"); document.getElementById("menuBtn").focus(); } } });
 app.addEventListener("keydown", ev=>{ if (ev.key==="Enter" && ev.target.id==="cod") document.getElementById("entrar").click(); });
 app.addEventListener("input", ev=>{ if (ev.target.type==="range") ev.target.nextElementSibling.textContent = ev.target.value;
   if (ev.target.dataset.n){ const d = nutriDatos(); d[ev.target.dataset.n] = ev.target.dataset.n === "act" ? +ev.target.value : ev.target.value.trim(); nutriGuardar(d); nutriActualizar(); } });
