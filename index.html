@@ -31,7 +31,8 @@
   .logo{font-family:"Barlow Condensed";font-weight:700;font-size:18px;letter-spacing:.08em}
   .logo b{color:var(--acc-txt)}
   .pill{display:inline-block;padding:3px 9px;border-radius:999px;background:var(--card2);color:var(--mut);font-size:12px;white-space:nowrap}
-  .weeks{display:flex;gap:6px;overflow-x:auto;margin:16px 0 8px;padding-bottom:4px}
+  .weeks{display:flex;gap:6px;overflow-x:auto;margin:16px 0 8px;padding-bottom:4px;scrollbar-width:none;-webkit-overflow-scrolling:touch;scroll-padding:0 40px}
+  .weeks::-webkit-scrollbar{display:none}
   .weeks button{flex:0 0 auto;border:1px solid var(--line);background:var(--card);color:var(--txt);border-radius:10px;padding:8px 12px;font:600 14px Inter;cursor:pointer}
   .weeks button.on{background:var(--acc);color:var(--acc-ink);border-color:var(--acc)}
   .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;margin:10px 0}
@@ -137,15 +138,13 @@
   .desglose{display:grid;gap:6px;font-size:14px;color:var(--mut)}
   .desglose div{display:flex;justify-content:space-between}
   .desglose b{color:var(--txt)}
-  .tabbar{position:fixed;left:0;right:0;bottom:0;z-index:20;background:rgba(11,16,18,.96);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-top:1px solid var(--line);padding:6px 8px calc(6px + env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(4,minmax(0,1fr))}
+  .tabbar{position:fixed;left:0;right:0;bottom:0;z-index:20;background:#121a1d;border-top:1px solid #2b3a41;box-shadow:0 -8px 24px rgba(0,0,0,.35);padding:8px 8px calc(8px + env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(4,minmax(0,1fr))}
   .tabbar[hidden]{display:none}
-  .tab{display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 0;border:0;background:none;color:var(--mut);font:600 11.5px Inter;text-decoration:none;cursor:pointer;border-radius:12px;max-width:140px;margin:0 auto;width:100%}
-  .tab svg,.tab img{width:26px;height:26px}
-  .tab img{opacity:.55;filter:grayscale(1)}
-  .tab.on img{opacity:1;filter:none}
-  .tab.on{color:var(--acc-txt)}
-  .tab.on .pill-ico{background:#0a2628}
-  .pill-ico{display:flex;align-items:center;justify-content:center;width:52px;height:30px;border-radius:999px}
+  .tab{display:flex;flex-direction:column;align-items:center;gap:4px;padding:4px 0;border:0;background:none;color:#7f8b91;font:600 11.5px Inter;text-decoration:none;cursor:pointer;border-radius:12px;max-width:140px;margin:0 auto;width:100%;transition:color .15s}
+  .tab svg{width:24px;height:24px}
+  .tab.on{color:#fff}
+  .tab.on .pill-ico{background:var(--acc);color:#fff}
+  .pill-ico{display:flex;align-items:center;justify-content:center;width:56px;height:32px;border-radius:999px;transition:background .15s}
   .picker{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;color:var(--txt);cursor:pointer;font:inherit}
   .picker .pk-t{flex:1;min-width:0}
   .picker b{display:block;font:700 19px "Barlow Condensed",sans-serif;letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -202,8 +201,8 @@
 <nav class="tabbar" id="tabbar" hidden aria-label="Secciones">
   <button class="tab" data-tab="inicio"><span class="pill-ico"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 7v10M18 7v10M3 10v4M21 10v4M6 12h12"/></svg></span>Entrenos</button>
   <button class="tab" data-tab="progreso"><span class="pill-ico"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l5-5 4 3 8-8"/><path d="M15 7h5v5"/></svg></span>Progreso</button>
-  <button class="tab" data-tab="nutricion"><span class="pill-ico"><img src="icons/nutricion.svg" alt=""></span>Nutrición</button>
-  <a class="tab" id="tabWa" href="#" target="_blank" rel="noopener"><span class="pill-ico"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-12.6 7.3L3 20l1.3-5.1A8.5 8.5 0 1 1 21 11.5z"/></svg></span>Aitor</a>
+  <button class="tab" data-tab="nutricion"><span class="pill-ico"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7.5c-1.6-1.3-5.5-1.6-6.8 1.9-1.2 3.3.6 8.4 3.3 10.6 1.3 1 2.3.7 3.5.2 1.2.5 2.2.8 3.5-.2 2.7-2.2 4.5-7.3 3.3-10.6-1.3-3.5-5.2-3.2-6.8-1.9z"/><path d="M12 7.5c0-2 .8-3.6 2.6-4.5"/></svg></span>Nutrición</button>
+  <a class="tab" id="tabWa" href="#" target="_blank" rel="noopener" aria-label="Chat con Aitor por WhatsApp"><span class="pill-ico"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 20.5l1.3-4.4A8.5 8.5 0 1 1 8 19.3z"/><path d="M9 8.6c0 3.4 2.9 6.4 6.4 6.4l1.1-1.3-1.8-1-1 .8a4.6 4.6 0 0 1-2.2-2.2l.8-1-1-1.8z" fill="currentColor" stroke-width="1.2"/></svg></span>Chat</a>
 </nav>
 
 <script>
@@ -517,6 +516,8 @@ function viewHome(){
   });
   h += `<button class="link" id="salir">Cerrar sesión</button>`;
   app.innerHTML = h;
+  const wk = app.querySelector(".weeks"), on = wk && wk.querySelector(".on");
+  if (on) wk.scrollLeft = on.offsetLeft - wk.offsetLeft - (wk.clientWidth - on.offsetWidth) / 2;
 }
 
 function scaleHTML(name, val, lo, hi){
