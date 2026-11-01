@@ -103,6 +103,23 @@
   .wa{display:inline-flex;align-items:center;gap:6px;text-decoration:none;font:600 13px Inter;color:#a9e2e3;border:1px solid #11484a;border-radius:999px;padding:6px 12px;background:#0a2628}
   .wa svg{flex:0 0 auto}
   .wa.big{display:flex;justify-content:center;width:100%;box-sizing:border-box;padding:13px;border-radius:14px;font-size:15px;margin-top:14px}
+  .seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:6px;margin-top:6px}
+  .seg button{border:1px solid var(--line);background:var(--card2);color:var(--txt);border-radius:10px;padding:10px 6px;font:600 14px Inter;cursor:pointer}
+  .seg button.on{background:var(--acc);border-color:var(--acc);color:#fff}
+  .grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+  .grid3 input{width:100%;box-sizing:border-box}
+  select.txt{appearance:none;-webkit-appearance:none}
+  .kcal{font-family:"Barlow Condensed";font-style:italic;font-weight:800;font-size:58px;line-height:1;color:#fff}
+  .kcal small{font-size:22px;color:var(--acc-txt);margin-left:6px}
+  .macro{display:flex;flex-direction:column;gap:6px;padding:10px 0;border-bottom:1px solid var(--line)}
+  .macro:last-child{border-bottom:0}
+  .macro .top{display:flex;justify-content:space-between;font-weight:600}
+  .macro .bar{height:8px;background:var(--card2);border-radius:99px;overflow:hidden}
+  .macro .bar i{display:block;height:100%;border-radius:99px}
+  .desglose{display:grid;gap:6px;font-size:14px;color:var(--mut)}
+  .desglose div{display:flex;justify-content:space-between}
+  .desglose b{color:var(--txt)}
+  .nutri-card{display:flex;align-items:center;gap:14px;width:100%;text-align:left;color:inherit;font:inherit;cursor:pointer}
   .err-box{background:#2a1212;border:1px solid #5a2323;color:#fca5a5;border-radius:12px;padding:10px 12px;font-size:14px;margin-top:12px}
 </style>
 </head>
@@ -238,6 +255,90 @@ function nombreCliente(){ return D && D.cliente ? D.cliente.split(" ")[0] : ""; 
 function waEjercicio(e, n){ return waLink(`Hola Aitor, soy ${nombreCliente()}. Tengo una duda con "${e.titulo}" (Día ${n}, Semana ${D.semana}): `); }
 function waGeneral(){ return waLink(`Hola Aitor, soy ${nombreCliente()}. Te escribo desde la app: `); }
 
+/* ========== Nutrición: calculadora de calorías y macros ==========
+   Misma lógica que calculadora-entrenaitorr.netlify.app:
+   Mifflin-St Jeor × actividad; masa = +10 %; proteína 1,8 g/kg; grasa 0,9 g/kg; resto hidratos. */
+const NKEY = "entrenaitor_nutri";
+const ACTIVIDAD = [
+  { f: 1.2,   t: "Poco activo", d: "Trabajo sentado, poco ejercicio" },
+  { f: 1.375, t: "Algo activo", d: "Entreno 1-3 días por semana" },
+  { f: 1.55,  t: "Activo",      d: "Entreno 3-5 días por semana" },
+  { f: 1.725, t: "Muy activo",  d: "Entreno 6-7 días o trabajo físico" },
+  { f: 1.9,   t: "A tope",      d: "Entreno duro a diario y trabajo físico" }
+];
+const OBJETIVOS = {
+  masa:   { t: "Ganar músculo", ajuste: 0.10,  prot: 1.8, grasa: 0.9, extra: "10 % extra para ganar músculo" },
+  grasa:  { t: "Perder grasa",  ajuste: -0.20, prot: 2.0, grasa: 0.8, extra: "20 % menos para perder grasa" },
+  mant:   { t: "Mantener",      ajuste: 0,     prot: 1.8, grasa: 0.9, extra: "Sin ajuste" }
+};
+function nutriDatos(){ let d = null; try { d = JSON.parse(localStorage.getItem(NKEY)); } catch(e){}
+  return Object.assign({ sexo: "h", edad: "", peso: "", altura: "", act: 2, obj: "masa" }, d || {}); }
+function nutriGuardar(d){ try { localStorage.setItem(NKEY, JSON.stringify(d)); } catch(e){} }
+function nutriCalc(d){
+  const edad = +d.edad, peso = +String(d.peso).replace(",", "."), alt = +d.altura;
+  if (!(edad >= 18 && edad < 100 && peso > 30 && peso < 250 && alt > 120 && alt < 230)) return null;
+  const tmb = 10 * peso + 6.25 * alt - 5 * edad + (d.sexo === "h" ? 5 : -161);
+  const gasto = tmb * ACTIVIDAD[d.act].f;
+  const o = OBJETIVOS[d.obj];
+  const kcal = Math.round(gasto * (1 + o.ajuste) / 10) * 10;
+  const p = Math.round(o.prot * peso), g = Math.round(o.grasa * peso);
+  const h = Math.max(0, Math.round((kcal - p * 4 - g * 9) / 4));
+  return { tmb: Math.round(tmb), gasto: Math.round(gasto), ajusteKcal: Math.round(gasto * o.ajuste), kcal, p, g, h, o };
+}
+const fmt0 = n => Number(n).toLocaleString("es-ES");
+function nutriResultadoHTML(d){
+  const r = nutriCalc(d);
+  if (!r) return `<div class="card"><span class="mut">Rellena edad (18 años o más), peso y altura para ver tus calorías y macros.</span></div>`;
+  const tot = r.p * 4 + r.g * 9 + r.h * 4 || 1;
+  const fila = (n, gr, kcal, col) => `<div class="macro"><div class="top"><span>${n}</span><span>${gr} g <span class="mut small">· ${fmt0(kcal)} kcal</span></span></div><div class="bar"><i style="width:${Math.round(kcal/tot*100)}%;background:${col}"></i></div></div>`;
+  const msg = `Hola Aitor, soy ${nombreCliente()}. He calculado mis macros en la app (${r.o.t.toLowerCase()}): ${fmt0(r.kcal)} kcal, ${r.p} g proteína, ${r.g} g grasa, ${r.h} g hidratos. Me interesa un plan de nutrición personalizado.`;
+  return `<div class="card">
+    <div class="mut small" style="letter-spacing:.14em;font-weight:600">TU OBJETIVO DIARIO · ${esc(r.o.t.toUpperCase())}</div>
+    <div class="kcal" style="margin:6px 0 14px">${fmt0(r.kcal)}<small>kcal/día</small></div>
+    ${fila("Proteína", r.p, r.p * 4, "#3fc3c5")}
+    ${fila("Grasa", r.g, r.g * 9, "#fbbf24")}
+    ${fila("Hidratos", r.h, r.h * 4, "#8b979e")}
+  </div>
+  <div class="card"><b>De dónde sale</b>
+    <div class="desglose" style="margin-top:10px">
+      <div><span>Gasto en reposo</span><b>${fmt0(r.tmb)} kcal</b></div>
+      <div><span>Gasto en un día normal</span><b>${fmt0(r.gasto)} kcal</b></div>
+      <div><span>${esc(r.o.extra)}</span><b>${r.ajusteKcal > 0 ? "+" : ""}${fmt0(r.ajusteKcal)} kcal</b></div>
+    </div>
+  </div>
+  <div class="card"><b>Cómo ajustarlo</b>
+    <p class="mut small" style="line-height:1.5;margin:8px 0 0">Pésate 2-3 mañanas por semana, en ayunas. ${d.obj === "masa" ? "Si en 3 semanas tu peso no sube, añade unas 150 kcal. Si sube más de 1 kg al mes, quita unas 100 kcal." : d.obj === "grasa" ? "Si en 3 semanas tu peso no baja, quita unas 150 kcal. Si bajas más de un 1 % de tu peso por semana, añade unas 100 kcal." : "Si tu peso sube o baja de forma constante durante 3 semanas, ajusta 100-150 kcal."}</p>
+  </div>
+  <div class="card" style="background:#0a2628;border-color:#11484a">
+    <b style="font-size:17px">¿Quieres un plan de nutrición hecho para ti?</b>
+    <p class="small" style="color:#d6f1f1;line-height:1.5;margin:8px 0 0">Esto es un punto de partida. Con un plan personalizado ajustamos tus comidas, tus horarios y lo que te gusta comer para que llegues a tus números sin pasar hambre.</p>
+    <a class="wa big" href="${esc(waLink(msg))}" target="_blank" rel="noopener" style="background:var(--acc);color:#fff;border-color:var(--acc)">${WA_ICON}Quiero mi plan de nutrición</a>
+  </div>
+  <p class="mut small" style="line-height:1.5">Estimación orientativa para mayores de 18 años. No sustituye el consejo de un profesional sanitario.</p>`;
+}
+function viewNutri(){
+  const d = nutriDatos();
+  const segBtn = (grp, val, txt, on) => `<button data-nseg="${grp}" data-v="${val}" class="${on ? "on" : ""}">${txt}</button>`;
+  app.innerHTML = `<button class="back" data-go="inicio">← Volver</button>
+  <div class="brand"><h1>Nutrición</h1><img src="icons/sello-nutricion.svg" alt="" style="width:56px;height:56px"></div>
+  <div class="mut small">Calcula tus calorías y macros para empezar</div>
+  <div class="card" id="nutri">
+    <label class="lb" style="margin-top:0">Objetivo</label>
+    <div class="seg">${Object.keys(OBJETIVOS).map(k => segBtn("obj", k, OBJETIVOS[k].t, d.obj === k)).join("")}</div>
+    <label class="lb">Sexo</label>
+    <div class="seg">${segBtn("sexo","h","Hombre",d.sexo==="h")}${segBtn("sexo","m","Mujer",d.sexo==="m")}</div>
+    <div class="grid3" style="margin-top:14px">
+      <div><label class="lb" style="margin-top:0" for="n-edad">Edad</label><input class="txt" id="n-edad" data-n="edad" inputmode="numeric" value="${esc(d.edad)}" placeholder="años"></div>
+      <div><label class="lb" style="margin-top:0" for="n-peso">Peso</label><input class="txt" id="n-peso" data-n="peso" inputmode="decimal" value="${esc(d.peso)}" placeholder="kg"></div>
+      <div><label class="lb" style="margin-top:0" for="n-alt">Altura</label><input class="txt" id="n-alt" data-n="altura" inputmode="numeric" value="${esc(d.altura)}" placeholder="cm"></div>
+    </div>
+    <label class="lb" for="n-act">Actividad</label>
+    <select class="txt" id="n-act" data-n="act">${ACTIVIDAD.map((a,i) => `<option value="${i}" ${+d.act===i?"selected":""}>${a.t} · ${a.d}</option>`).join("")}</select>
+  </div>
+  <div id="nres">${nutriResultadoHTML(d)}</div>`;
+}
+function nutriActualizar(){ const r = document.getElementById("nres"); if (r) r.innerHTML = nutriResultadoHTML(nutriDatos()); }
+
 /* ========== Vistas ========== */
 function viewLogin(msg){
   app.innerHTML = `<div class="center">
@@ -269,6 +370,7 @@ function viewHome(){
       ${statusOf(d)[0]==="Completado" && !domsHechas(d) ? `<div class="todo">⏱ A las 48 h: puntúa tus agujetas de este día</div>` : ""}
     </button>`;
   });
+  h += `<button class="card nutri-card" data-go="nutricion"><img src="icons/sello-nutricion.svg" alt="" style="width:58px;height:58px;flex:0 0 auto"><span style="display:flex;flex-direction:column;gap:3px"><b style="font-size:17px">Nutrición</b><span class="mut small">Calcula tus calorías y macros</span></span><span style="margin-left:auto;color:var(--acc-txt);font-size:22px">›</span></button>`;
   h += `<a class="wa big" href="${esc(waGeneral())}" target="_blank" rel="noopener">${WA_ICON}Escribir a Aitor por WhatsApp</a>`;
   h += `<button class="link" id="salir">Cerrar sesión</button>`;
   app.innerHTML = h;
@@ -341,6 +443,7 @@ function route(){
   const hsh = location.hash.replace("#",""); let m;
   if ((m = hsh.match(/^dia-(\d+)$/))) viewDay(+m[1]);
   else if ((m = hsh.match(/^agujetas-(\d+)$/))) viewDoms(+m[1]);
+  else if (hsh === "nutricion") viewNutri();
   else viewHome();
   window.scrollTo(0,0);
 }
@@ -351,6 +454,8 @@ const diaActual = () => { const m = location.hash.match(/dia-(\d+)/); return m ?
 app.addEventListener("click", ev=>{
   const t = ev.target.closest("button"); if (!t) return;
   if (t.id === "entrar"){ const v = document.getElementById("cod").value.trim().toUpperCase(); if (!v) return; CODE = v; cargar(); return; }
+  if (t.dataset.nseg){ const d = nutriDatos(); d[t.dataset.nseg] = t.dataset.v; nutriGuardar(d);
+    t.parentElement.querySelectorAll("button").forEach(x => x.classList.toggle("on", x === t)); nutriActualizar(); return; }
   if (t.id === "instYes" && installEvt){ installEvt.prompt(); installEvt.userChoice.finally(()=>{ installEvt = null; viewHome(); }); return; }
   if (t.id === "instNo"){ try { localStorage.setItem("entrenaitor_inst_ok","1"); } catch(e){} viewHome(); return; }
   if (t.id === "instCopy"){ const u = enlaceCliente();
@@ -395,7 +500,8 @@ app.addEventListener("click", ev=>{
 function viewDayKeep(n){ const y = window.scrollY; viewDay(n); window.scrollTo(0,y); }
 
 app.addEventListener("keydown", ev=>{ if (ev.key==="Enter" && ev.target.id==="cod") document.getElementById("entrar").click(); });
-app.addEventListener("input", ev=>{ if (ev.target.type==="range") ev.target.nextElementSibling.textContent = ev.target.value; });
+app.addEventListener("input", ev=>{ if (ev.target.type==="range") ev.target.nextElementSibling.textContent = ev.target.value;
+  if (ev.target.dataset.n){ const d = nutriDatos(); d[ev.target.dataset.n] = ev.target.dataset.n === "act" ? +ev.target.value : ev.target.value.trim(); nutriGuardar(d); nutriActualizar(); } });
 // Si cambia una serie ya marcada, se vuelve a guardar al salir del campo
 app.addEventListener("change", ev=>{
   const el = ev.target, n = diaActual(), d = n && dia(n); if (!d) return;
