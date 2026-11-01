@@ -175,7 +175,10 @@
   .lock h3{display:flex;align-items:center;gap:8px;font:700 19px "Barlow Condensed",sans-serif;letter-spacing:.02em;margin:0 0 4px}
   .lock h3 svg{color:#f4c24d;flex:0 0 auto}
   .lock p{color:var(--mut);font-size:13.5px;line-height:1.5;margin:0}
-  .lock .blur{filter:blur(5px);opacity:.55;pointer-events:none;margin-top:10px}
+  .lock-prev{position:relative;margin-top:10px}
+  .lock .blur{filter:blur(4px);opacity:.5;pointer-events:none;user-select:none}
+  .sello{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);display:inline-flex;align-items:center;gap:6px;white-space:nowrap;background:rgba(11,16,18,.88);border:1px solid #6b5200;color:#ffe08a;font:600 13px Inter;padding:7px 13px;border-radius:999px}
+  .sello svg{width:15px;height:15px}
   .lock-cta{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;margin-top:12px;border:0;border-radius:12px;padding:12px;background:var(--acc);color:#fff;font:700 15px Inter;text-decoration:none}
   .ses{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin:8px 0;color:var(--txt);cursor:pointer;font:inherit}
   .ses .d{flex:0 0 46px;text-align:center;background:#0a2628;border-radius:10px;padding:6px 0;color:var(--acc-txt);font:700 20px "Barlow Condensed",sans-serif;line-height:1}
@@ -803,7 +806,7 @@ function leerInv(){ try { return JSON.parse(localStorage.getItem(INVK)) || null;
 function guardarInv(){ try { localStorage.setItem(INVK, JSON.stringify(INVITADO)); } catch(e){} }
 const ICO_LOCK = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>';
 const waContratar = () => waLink(`Hola Aitor, soy ${INVITADO ? INVITADO.nombre.split(" ")[0] : ""}. Estoy usando la versión gratuita de la app y me interesa entrenar contigo.`);
-function bloqueado(titulo, texto, preview, sinBoton){ return `<div class="lock"><h3>${ICO_LOCK}${titulo}</h3><p>${texto}</p>${preview ? `<div class="blur" aria-hidden="true">${preview}</div>` : ""}${sinBoton ? "" : `<a class="lock-cta" href="${esc(waContratar())}" target="_blank" rel="noopener">${WA_ICON}Quiero entrenar con Aitor</a>`}</div>`; }
+function bloqueado(titulo, texto, preview){ return `<div class="lock"><h3>${ICO_LOCK}${titulo}</h3><p>${texto}</p>${preview ? `<div class="lock-prev"><div class="blur" aria-hidden="true">${preview}</div><span class="sello">${ICO_LOCK}Solo para clientes</span></div>` : ""}</div>`; }
 function viewInvAlta(msg){
   document.body.classList.add("onb");
   app.innerHTML = `<div class="onb-wrap">
@@ -855,8 +858,10 @@ function viewInvHome(){
       h += `<button class="ses" data-ses="${esc(x.id)}"><span class="d">${f.n}<small>${f.m}</small></span><span class="t"><b>${esc(x.ejercicios.map(e => e.nombre).join(", "))}</b><small>${x.ejercicios.length} ejercicios · ${nS} series</small></span></button>`; });
   } else h += `<div class="card" style="margin-top:14px"><b>Empieza por tu próximo entreno</b><p class="mut small" style="margin:6px 0 0;line-height:1.5">Apunta tus ejercicios con sus series, repeticiones y kilos. Aquí tendrás tu historial para saber qué hiciste la última vez.</p></div>`;
   h += `<div class="mut small" style="margin:22px 0 0">Con Aitor como entrenador</div>`;
-  h += bloqueado("Tu rutina, hecha para ti", "Aitor te programa cada semana: ejercicios, series, repeticiones y RIR adaptados a ti, y los ajusta según cómo progresas.", "", true);
-  h += bloqueado("Agujetas y recuperación", "Puntúa cómo te recuperas de cada sesión para que el plan se ajuste a ti.");
+  h += bloqueado("Tu rutina, hecha para ti", "Aitor te programa cada semana: ejercicios, series, repeticiones y RIR adaptados a ti, y los ajusta según cómo progresas.",
+    `<div class="card" style="margin:0"><b style="font:700 20px 'Barlow Condensed'">Día 1 · Torso</b><div class="mut small">6 ejercicios · ~55 min</div><div style="margin-top:8px;line-height:1.9;font-size:14px">Press banca · 4×6-8 · RIR 2<br>Remo con barra · 4×8-10 · RIR 2<br>Press militar · 3×8-10 · RIR 1</div></div>`);
+  h += bloqueado("Agujetas y recuperación", "Puntúa cómo te recuperas de cada sesión para que el plan se ajuste a ti.",
+    `<div style="display:flex;gap:6px;justify-content:center">${[1,2,3,4,5].map(k => `<span class="dm-b ${k===3?"on":""}" style="${dmVar(k)};display:inline-flex;align-items:center;justify-content:center">${k}</span>`).join("")}</div>`);
   h += `<div class="free">Estás usando la <b>versión gratuita</b> de la app de Entrenaitor.</div>
   <button class="link" id="invSalir">Salir</button>`;
   app.innerHTML = h;
@@ -864,7 +869,7 @@ function viewInvHome(){
 function viewInvProgreso(){
   const fake = `<svg viewBox="0 0 340 150" width="100%"><polyline fill="none" stroke="#058789" stroke-width="4" points="20,120 70,110 120,90 170,85 220,60 270,45 320,30"/><g fill="#3fc3c5"><circle cx="20" cy="120" r="5"/><circle cx="120" cy="90" r="5"/><circle cx="220" cy="60" r="5"/><circle cx="320" cy="30" r="5"/></g></svg>`;
   app.innerHTML = `<div class="brand"><h1>Progreso</h1></div>
-  ${bloqueado("Tu fuerza, semana a semana", "Con Aitor verás cómo sube tu fuerza estimada en cada ejercicio, tus mejores marcas y cuánto has mejorado desde el primer día.", fake, true)}
+  ${bloqueado("Tu fuerza, semana a semana", "Con Aitor verás cómo sube tu fuerza estimada en cada ejercicio, tus mejores marcas y cuánto has mejorado desde el primer día.", fake)}
   ${bloqueado("Tu cuerpo, bajo control", "Check-in semanal con tu peso, % de grasa, masa muscular y más, con gráficas de tu evolución.", `<div class="mets" style="margin:0"><div class="met"><small>Peso</small><b>72,4<u>kg</u></b><i>−2,1 kg</i></div><div class="met"><small>Grasa</small><b>16,8<u>%</u></b><i>−1,9 %</i></div></div>`)}`;
 }
 /* --- Editor de entreno del invitado --- */
@@ -915,7 +920,9 @@ function viewLogin(msg){
     <input class="txt code" id="cod" autocomplete="off" autocapitalize="characters" value="${esc(CODE)}" placeholder="XXXXXX">
     <button class="btn" id="entrar">Entrar</button>
     ${msg ? `<div class="err-box">${esc(msg)}</div>` : ""}
-    <p class="mut small" style="text-align:center;margin-top:16px">Te lo da tu entrenador.</p></div>`;
+    <p class="mut small" style="text-align:center;margin-top:16px">Te lo da tu entrenador.</p>
+    <div style="display:flex;align-items:center;gap:10px;margin:26px 0 4px;color:var(--mut);font-size:13px"><span style="flex:1;height:1px;background:var(--line)"></span>¿Aún no entrenas con Aitor?<span style="flex:1;height:1px;background:var(--line)"></span></div>
+    <button class="btn ghost" id="probarGratis" style="margin-top:10px">Probar gratis</button></div>`;
 }
 
 function viewHome(){
@@ -1054,6 +1061,7 @@ app.addEventListener("click", ev=>{
   if (ev.target.id === "prSheet") { abrirSheet(false); return; }
   const t = ev.target.closest("button"); if (!t) return;
   if (t.id === "pr-pick") { abrirSheet(true); return; }
+  if (t.id === "probarGratis") { t.disabled = true; api("codigoInvitado").then(c => { CODE = c; viewInvAlta(); }).catch(e => { t.disabled = false; toast(e.red ? "Sin conexión" : e.message, true); }); return; }
   if (t.id === "invCrear") { const nom = document.getElementById("inv-nom").value.trim(), wa = document.getElementById("inv-wa").value.trim();
     if (nom.length < 2) return viewInvAlta("Escribe tu nombre.");
     if (wa.replace(/\D/g, "").length < 9) return viewInvAlta("Escribe tu número de WhatsApp.");
