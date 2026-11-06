@@ -208,6 +208,20 @@
   .stp{display:flex;align-items:center;gap:4px}
   .stp span{min-width:44px;text-align:center;font:700 18px "Barlow Condensed",sans-serif;line-height:1}
   .stp span small{display:block;font:500 10px Inter;color:var(--mut)}
+  .ck-bas{margin-top:12px;border-top:1px solid var(--line);padding-top:10px}
+  .ck-bas summary{cursor:pointer;font-weight:600;font-size:14px;color:var(--acc-txt)}
+  .esc-b{margin-top:14px}
+  .esc-t{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:6px}
+  .esc-t span{font-weight:600;font-size:14.5px} .esc-t small{color:var(--mut);font-size:11.5px}
+  .esc{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:4px}
+  .esc button{height:34px;border-radius:9px;border:1px solid var(--line);background:var(--card2);color:var(--txt);font:700 15px "Barlow Condensed",sans-serif;cursor:pointer;padding:0}
+  .esc button.on{background:var(--acc);border-color:var(--acc);color:#fff}
+  .fotos{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+  .foto{position:relative;aspect-ratio:3/4;border-radius:12px;overflow:hidden;background:var(--card2);border:1px solid var(--line)}
+  .foto img{width:100%;height:100%;object-fit:cover}
+  .foto .ix{position:absolute;top:6px;right:6px;width:28px;height:28px;background:rgba(0,0,0,.6);color:#fff;border:0}
+  .foto.add{display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--acc-txt);font-size:28px;cursor:pointer;border-style:dashed}
+  .foto.add small{font:600 12px Inter}
   .chkrow{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:none;border:0;padding:0;color:var(--txt);cursor:pointer;font:inherit}
   .chkrow .box{flex:0 0 24px;height:24px;border-radius:7px;border:2px solid #2b3a41;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:14px}
   .chkrow[aria-pressed="true"] .box{background:var(--acc);border-color:var(--acc)}
@@ -618,6 +632,7 @@ const BKEY = "entrenaitor_bascula";
 let BASC = null, CUERPO_SEL = "peso", BASC_ERR = "";
 const MET = [
   { k: "peso", t: "Peso", u: "kg", min: 25, max: 300, ob: true },
+  { k: "cintura", t: "Cintura", u: "cm", min: 40, max: 200 },
   { k: "grasa", t: "Grasa corporal", u: "%", min: 2, max: 70 },
   { k: "musculo", t: "Masa muscular", u: "kg", min: 10, max: 150 },
   { k: "imc", t: "IMC", u: "", min: 10, max: 70 },
@@ -673,35 +688,87 @@ function pintarCuerpo(){
   h += `<a class="wa" href="${esc(waLink(`Hola Aitor, soy ${nombreCliente()}. Tengo una duda con mi evolución de la báscula: `))}" target="_blank" rel="noopener">${WA_ICON}Pregunta a Aitor por tu evolución</a>`;
   app.innerHTML = h;
 }
+// Check-in semanal: peso y cintura, báscula (opcional), cómo ha ido la semana (1-10), comentario y fotos.
+// Se guarda en su hoja de entreno (Báscula), en "Seguimiento Semanal" y en su ficha ("Seguimiento del peso").
+const ESC = [
+  { k: "hambre", t: "Hambre", a: "1 nada · 10 muchísima" },
+  { k: "energia", t: "Energía", a: "1 muy baja · 10 a tope" },
+  { k: "sueno", t: "Sueño", a: "1 fatal · 10 genial" },
+  { k: "adherencia", t: "Adherencia al plan", a: "1 nada · 10 al 100 %" }];
+let CK = null;
 function viewCheckin(){
   if (!BASC) BASC = leerBasc();
   const r = registroSemana() || {};
+  if (!CK) CK = { esc: {}, fotos: [], com: "" };
   const val = k => r[k] != null ? String(r[k]).replace(".", ",") : "";
-  app.innerHTML = `<button class="back" data-go="cuerpo">← Progreso</button>
+  const campo = m => `<div><label class="lb" for="ck-${m.k}">${m.t}${m.u ? " (" + m.u + ")" : ""}${m.ob ? " *" : ""}</label><input class="txt" id="ck-${m.k}" data-ck="${m.k}" inputmode="decimal" autocomplete="off" value="${val(m.k)}" placeholder="${m.ob ? "Obligatorio" : "Opcional"}"></div>`;
+  const prin = MET.filter(m => m.k === "peso" || m.k === "cintura"), bas = MET.filter(m => m.k !== "peso" && m.k !== "cintura");
+  app.innerHTML = `<button class="back" data-go="cuerpo" id="ckVolver">← Progreso</button>
   <h1>Check-in semanal</h1>
-  <div class="mut small" style="margin:6px 0 4px;line-height:1.5">Pésate en ayunas, después de ir al baño, y apunta lo que marca tu báscula. Solo el peso es obligatorio.</div>
+  <div class="mut small" style="margin:6px 0 4px;line-height:1.5">Pésate en ayunas, después de ir al baño. Mide la cintura a la altura del ombligo.</div>
   <div class="card">
     <label class="lb" for="ck-fecha" style="margin-top:0">Fecha</label>
     <input class="txt" type="date" id="ck-fecha" value="${r.f || hoyISO()}" max="${hoyISO()}">
-    <div class="grid2" style="margin-top:4px">${MET.map(m => `<div><label class="lb" for="ck-${m.k}">${m.t}${m.u ? " (" + m.u + ")" : ""}${m.ob ? " *" : ""}</label><input class="txt" id="ck-${m.k}" data-ck="${m.k}" inputmode="decimal" autocomplete="off" value="${val(m.k)}" placeholder="${m.ob ? "Obligatorio" : "Opcional"}"></div>`).join("")}</div>
-    <div class="field-err" id="ck-err" hidden></div>
+    <div class="grid2" style="margin-top:4px">${prin.map(campo).join("")}</div>
+    <details class="ck-bas" ${bas.some(m => r[m.k] != null) ? "open" : ""}><summary>Datos de tu báscula <span class="mut">(opcional)</span></summary>
+      <div class="grid2">${bas.map(campo).join("")}</div></details>
   </div>
+  <div class="card"><b style="font:700 19px 'Barlow Condensed',sans-serif;letter-spacing:.02em">¿Cómo ha ido tu semana?</b>
+    ${ESC.map(e => `<div class="esc-b"><div class="esc-t"><span>${e.t}</span><small>${e.a}</small></div>
+      <div class="esc" role="radiogroup" aria-label="${e.t}">${[1,2,3,4,5,6,7,8,9,10].map(n => `<button class="${CK.esc[e.k] === n ? "on" : ""}" data-esc="${e.k},${n}" role="radio" aria-checked="${CK.esc[e.k] === n}">${n}</button>`).join("")}</div></div>`).join("")}
+    <label class="lb" for="ck-com">Comentario <span class="mut" style="font-weight:400">(opcional)</span></label>
+    <textarea class="txt" id="ck-com" rows="3" maxlength="1000" placeholder="Cómo te has sentido, si has tenido algún problema, algo que quieras contarle a Aitor…">${esc(CK.com)}</textarea>
+  </div>
+  <div class="card"><b style="font:700 19px 'Barlow Condensed',sans-serif;letter-spacing:.02em">Fotos <span class="mut" style="font:500 13px Inter">(opcional, máx. 3)</span></b>
+    <div class="mut small" style="margin:4px 0 10px;line-height:1.5">Frente, perfil y espalda, con la misma luz cada semana. Solo las ve Aitor.</div>
+    <div class="fotos">${CK.fotos.map((f, i) => `<div class="foto"><img src="${f}" alt="Foto ${i + 1}"><button class="ix" data-quitafoto="${i}" aria-label="Quitar foto">✕</button></div>`).join("")}
+      ${CK.fotos.length < 3 ? `<label class="foto add" for="ck-fotos">＋<small>Añadir</small></label>` : ""}</div>
+    <input type="file" id="ck-fotos" accept="image/*" multiple hidden>
+  </div>
+  <div class="field-err" id="ck-err" hidden></div>
   <button class="btn" id="saveCheckin">Guardar check-in</button>`;
 }
+// Reduce la foto en el móvil (lado largo 1080 px, ~200 KB) antes de subirla
+function reducirFoto(file){
+  return new Promise((ok, mal) => {
+    const url = URL.createObjectURL(file), img = new Image();
+    img.onload = () => {
+      const k = Math.min(1, 1080 / Math.max(img.width, img.height)), c = document.createElement("canvas");
+      c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+      c.getContext("2d").drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url);
+      let q = 0.82, d = c.toDataURL("image/jpeg", q);
+      while (d.length * 0.75 > 200 * 1024 && q > 0.4) { q -= 0.08; d = c.toDataURL("image/jpeg", q); }
+      ok(d);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); mal(new Error("No se ha podido leer la foto")); };
+    img.src = url;
+  });
+}
+function ckLeer(){ // guarda lo escrito antes de repintar
+  if (!CK) return; const c = document.getElementById("ck-com"); if (c) CK.com = c.value;
+  CK.vals = {}; MET.forEach(m => { const i = document.getElementById("ck-" + m.k); if (i) CK.vals[m.k] = i.value; });
+  const f = document.getElementById("ck-fecha"); if (f) CK.fecha = f.value;
+}
+function ckRepinta(){ ckLeer(); const y = window.scrollY, v = CK.vals || {}, f = CK.fecha; viewCheckin(); Object.keys(v).forEach(k => { const i = document.getElementById("ck-" + k); if (i) i.value = v[k]; }); if (f) document.getElementById("ck-fecha").value = f; window.scrollTo(0, y); }
 function guardarCheckin(btn){
+  ckLeer();
   const err = document.getElementById("ck-err"), datos = { fecha: document.getElementById("ck-fecha").value || hoyISO(), semana: D ? D.semana : null };
   let fallo = "";
   MET.forEach(m => { const raw = document.getElementById("ck-" + m.k).value.trim(), v = parseFloat(raw.replace(",", "."));
     if (raw === "") { if (m.ob) fallo = fallo || "Apunta tu peso para guardar el check-in."; datos[m.k] = ""; return; }
     if (isNaN(v) || v < m.min || v > m.max) fallo = fallo || `Revisa ${m.t.toLowerCase()}: debe estar entre ${m.min} y ${m.max}.`;
     datos[m.k] = v; });
+  const faltan = ESC.filter(e => !CK.esc[e.k]);
+  if (faltan.length) fallo = fallo || `Puntúa del 1 al 10: ${faltan.map(e => e.t.toLowerCase()).join(", ")}.`;
   if (datos.fecha > hoyISO()) fallo = fallo || "La fecha no puede ser futura.";
-  if (fallo) { err.textContent = fallo; err.hidden = false; return; }
-  err.hidden = true; btn.disabled = true;
+  if (fallo) { err.textContent = fallo; err.hidden = false; err.scrollIntoView({ behavior: "smooth", block: "center" }); return; }
+  ESC.forEach(e => datos[e.k] = CK.esc[e.k]);
+  datos.comentario = CK.com.trim(); datos.fotos = CK.fotos.slice(0, 3);
+  err.hidden = true; btn.disabled = true; btn.textContent = datos.fotos.length ? "Subiendo fotos…" : "Guardando…";
   guardar("guardarBascula", datos).then(r => {
-    BASC = Array.isArray(r) ? r : mezclarBasc(BASC, datos); guardarBasc(BASC);
-    toast("Check-in guardado"); go("cuerpo");
-  }).catch(() => { btn.disabled = false; });
+    BASC = Array.isArray(r) ? r : mezclarBasc(BASC, datos); guardarBasc(BASC); CK = null;
+    toast("Check-in guardado 💪"); go("cuerpo");
+  }).catch(() => { btn.disabled = false; btn.textContent = "Guardar check-in"; });
 }
 
 /* ========== Modo entrenador ==========
@@ -1241,7 +1308,10 @@ function go(h){ if (location.hash === "#"+h) route(); else location.hash = h; }
 const diaActual = () => { const m = location.hash.match(/dia-(\d+)/); return m ? +m[1] : null; };
 
 /* ========== Interacción ========== */
-app.addEventListener("change", ev=>{ if (ev.target.id === "pr-ej") { PROG_SEL = ev.target.value; pintarProgreso(); } });
+app.addEventListener("change", ev=>{
+  if (ev.target.id === "ck-fotos" && CK) { const fs = [...ev.target.files].slice(0, 3 - CK.fotos.length); ev.target.value = "";
+    if (!fs.length) return; toast("Preparando fotos…");
+    Promise.all(fs.map(reducirFoto)).then(l => { CK.fotos = CK.fotos.concat(l).slice(0, 3); ckRepinta(); }).catch(e => toast(e.message, true)); return; } if (ev.target.id === "pr-ej") { PROG_SEL = ev.target.value; pintarProgreso(); } });
 app.addEventListener("click", ev=>{
   if (ev.target.id === "prSheet") { abrirSheet(false); return; }
   const t = ev.target.closest("button"); if (!t) return;
@@ -1327,6 +1397,9 @@ app.addEventListener("click", ev=>{
   if (t.dataset.cli != null && CLIENTES) { const c = CLIENTES[+t.dataset.cli]; if (c) abrirCliente(c); return; }
   if (t.dataset.met) { CUERPO_SEL = t.dataset.met; pintarCuerpo(); return; }
   if (t.id === "saveCheckin") { guardarCheckin(t); return; }
+  if (t.id === "ckVolver") CK = null;
+  if (t.dataset.esc && CK) { const [k, n] = t.dataset.esc.split(","); CK.esc[k] = +n; ckRepinta(); return; }
+  if (t.dataset.quitafoto != null && CK) { CK.fotos.splice(+t.dataset.quitafoto, 1); ckRepinta(); return; }
   if (t.dataset.dm != null) { const m = t.dataset.dm, v = +t.dataset.v; DOMS_SEL[m] = v;
     const row = t.closest(".dm-row"); row.classList.remove("falta"); row.setAttribute("style", dmVar(v));
     row.querySelectorAll(".dm-b").forEach(b => { const on = +b.dataset.v === v; b.classList.toggle("on", on); b.setAttribute("aria-checked", on); });
