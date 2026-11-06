@@ -11,7 +11,7 @@
 <link rel="icon" type="image/png" href="icons/icon-192.png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <meta name="theme-color" content="#0b1012">
-<title>Mi entreno · Entrenaitor</title>
+<title>Mi entrenamiento · Entrenaitor</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700;1,800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -342,7 +342,9 @@ function api(fn){ const args = [].slice.call(arguments,1);
   return fetch(API_URL, { method: "POST", body: JSON.stringify(LECTURA() ? { fn: fn, args: args, coach: COACH } : { fn: fn, args: args }) })
     .catch(() => { throw netErr(); })
     .then(r => { if (!r.ok) throw netErr("Sin conexión con el servidor"); return r.json(); })
-    .then(j => { if (!j.ok) throw new Error(j.error || "Error"); return j.data; }); }
+    .then(j => { if (!j.ok) throw new Error(amable(j.error)); return j.data; }); }
+// Los errores técnicos de Google se cambian por un mensaje entendible
+function amable(m){ m = String(m || ""); return !m || /https?:|Exception|permiso para llamar|TypeError|undefined|null|Cannot|Service|Servicio|excedido|exceeded|timed? ?out|tiempo de espera/i.test(m) ? "Algo ha fallado. Inténtalo otra vez en un momento; si sigue pasando, avisa a Aitor." : m; }
 
 /* ========== Cola sin conexión ==========
    Si no hay cobertura, lo que apunta el cliente se guarda en el móvil
@@ -767,7 +769,7 @@ function guardarCheckin(btn){
   err.hidden = true; btn.disabled = true; btn.textContent = datos.fotos.length ? "Subiendo fotos…" : "Guardando…";
   guardar("guardarBascula", datos).then(r => {
     BASC = Array.isArray(r) ? r : mezclarBasc(BASC, datos); guardarBasc(BASC); CK = null;
-    toast("Check-in guardado 💪"); go("cuerpo");
+    toast("¡Check-in enviado! Aitor lo revisará pronto 💪"); go("cuerpo");
   }).catch(() => { btn.disabled = false; btn.textContent = "Guardar check-in"; });
 }
 
@@ -809,13 +811,13 @@ function pintarCoach(){
   <h1>Tus clientes</h1>`;
   if (!CLIENTES) { app.innerHTML = h + `<div class="card" style="text-align:center;padding:30px"><div class="spin"></div></div>`; return; }
   const yo = YO && CLIENTES.find(c => c.codigo === YO);
-  if (YO) h += `<button class="cl yo-card" id="miEntreno"><span class="av" style="background:var(--acc);color:#fff">${ICO_PESA_MINI}</span><span class="ct"><b>Mi entrenamiento</b><small>${yo && yo.entreno ? "Último entreno apuntado " + haceTxt(yo.entreno) : "Tu rutina, para apuntar como siempre"}</small></span>${CHEV.replace('M6 9l6 6 6-6','M9 6l6 6-6 6')}</button><div class="mut small" style="margin:16px 0 0">Clientes</div>`;
+  if (YO) h += `<button class="cl yo-card" id="miEntreno"><span class="av" style="background:var(--acc);color:#fff">${ICO_PESA_MINI}</span><span class="ct"><b>Mi entrenamiento</b><small>${yo && yo.entreno ? "Último entrenamiento apuntado " + haceTxt(yo.entreno) : "Tu rutina, para apuntar como siempre"}</small></span>${CHEV.replace('M6 9l6 6 6-6','M9 6l6 6-6 6')}</button><div class="mut small" style="margin:16px 0 0">Clientes</div>`;
   const lista = CLIENTES.filter(c => c.codigo !== YO).sort((a, b) => estadoCliente(a)[2] - estadoCliente(b)[2] || a.nombre.localeCompare(b.nombre));
   const act = CLIENTES.filter(c => c.activo && c.codigo !== YO), usando = act.filter(c => estadoCliente(c)[2] === 0).length;
   h += `<div class="mut small" style="margin:4px 0 10px">${act.length} con acceso activo · ${usando} han usado la app esta semana</div>`;
   lista.forEach((c, i) => { const [t, cls] = estadoCliente(c);
     const ini = (c.nombre.match(/[A-Za-zÁÉÍÓÚÑáéíóúñ]+/g) || ["?"]).map(p => p[0]).join("").slice(0, 2).toUpperCase();
-    const det = c.acceso ? `Entró ${haceTxt(c.acceso)}${c.entreno ? " · Apuntó entreno " + haceTxt(c.entreno) : ""}` : "Aún no ha abierto la app";
+    const det = c.acceso ? `Entró ${haceTxt(c.acceso)}${c.entreno ? " · Apuntó un entrenamiento " + haceTxt(c.entreno) : ""}` : "Aún no ha abierto la app";
     h += `<button class="cl" data-cli="${CLIENTES.indexOf(c)}"><span class="av">${esc(ini)}</span><span class="ct"><b>${esc(c.nombre)}</b><small>${esc(det)}</small></span><span class="st ${cls}">${t}</span></button>`; });
   if (NINV) h += `<div class="free" style="margin-top:14px">🆓 <b>${NINV} ${NINV === 1 ? "invitado" : "invitados"}</b> en la versión gratis. Los tienes con su WhatsApp en la pestaña <b>Invitados</b> del panel.</div>`;
   h += `<p class="mut small" style="line-height:1.5;margin-top:14px">Al abrir un cliente ves su app tal cual la ve él, en modo solo lectura. Tus visitas no cuentan como actividad suya.</p>
@@ -864,7 +866,7 @@ function viewPrivacidad(){
   </div>`;
 }
 const PASOS = [
-  { i: "pesa", t: "Tu entreno, serie a serie", p: "En <b>Entrenos</b> tienes tu rutina de cada semana. Apunta reps, kilos y RIR de cada serie, y al terminar, cómo te has sentido. Llega solo a la ficha de Aitor." },
+  { i: "pesa", t: "Tu entrenamiento, serie a serie", p: "En <b>Entrenos</b> tienes tu rutina de cada semana. Apunta reps, kilos y RIR de cada serie, y al terminar, cómo te has sentido. Llega solo a la ficha de Aitor." },
   { i: "prog", t: "Mira cómo avanzas", p: "En <b>Progreso</b> verás tu fuerza estimada en cada ejercicio y, si te pesas cada semana, la evolución de tu cuerpo." },
   { i: "chat", t: "Aitor, a un toque", p: "En <b>Chat</b> le escribes por WhatsApp cuando tengas una duda. En <b>Nutrición</b> puedes calcular tus calorías y macros." } ];
 let PASO = 0;
@@ -898,7 +900,7 @@ function viewInvAlta(msg){
   app.innerHTML = `<div class="onb-wrap">
     <img src="${WM}" alt="Entrenaitor" style="width:210px;margin:0 0 26px">
     <h1>Entrena gratis con la app</h1>
-    <p>Apunta tus entrenos, guarda tu historial y calcula tus calorías. Solo necesitamos saber quién eres.</p>
+    <p>Apunta tus entrenamientos, guarda tu historial y calcula tus calorías. Solo necesitamos saber quién eres.</p>
     <label class="lb" for="inv-nom">Tu nombre</label>
     <input class="txt" id="inv-nom" autocomplete="given-name" placeholder="Nombre">
     <label class="lb" for="inv-wa">Tu WhatsApp</label>
@@ -912,7 +914,7 @@ function viewInvAlta(msg){
     ${msg ? `<div class="field-err">${esc(msg)}</div>` : ""}
     <button class="btn" id="invCrear" style="margin-top:18px">Empezar gratis</button>
     <button class="onb-skip" id="invYaTengo" style="color:var(--acc-txt);font-weight:600">¿Ya tienes cuenta? Entra con tu PIN</button>
-    <p class="mut small" style="margin-top:12px;line-height:1.5">Al empezar, Aitor guardará tus entrenos y tu contacto para ayudarte con tu entrenamiento y, de vez en cuando, escribirte con alguna propuesta. Si un día prefieres que lo borre, se lo dices y listo.</p>
+    <p class="mut small" style="margin-top:12px;line-height:1.5">Al empezar, Aitor guardará tus entrenamientos y tu contacto para ayudarte con tu entrenamiento y, de vez en cuando, escribirte con alguna propuesta. Si un día prefieres que lo borre, se lo dices y listo.</p>
     <button class="onb-skip" id="invVolver">Tengo un código de cliente</button>
   </div>`;
 }
@@ -922,7 +924,7 @@ function viewInvPin(msg, wa){
   app.innerHTML = `<div class="onb-wrap">
     <div class="onb-ico">${ICO.lock}</div>
     <h1>Entra en tu cuenta</h1>
-    <p>Escribe el WhatsApp con el que te diste de alta y tu PIN. Recuperarás tus entrenos.</p>
+    <p>Escribe el WhatsApp con el que te diste de alta y tu PIN. Recuperarás tus entrenamientos.</p>
     <label class="lb" for="pin-wa">Tu WhatsApp</label>
     <input class="txt" id="pin-wa" type="tel" inputmode="tel" autocomplete="tel" placeholder="600 000 000" value="${esc(wa || "")}">
     <label class="lb" for="pin-pin">Tu PIN</label>
@@ -972,7 +974,7 @@ function viewInvReset(wa, mail, msg){
 function okInvitado(r, cod){ const g = { token: r.token, nombre: r.nombre, codigo: cod, sesiones: r.sesiones || [] }; INVITADO = g; guardarInv(); store.del(); document.body.classList.remove("onb"); entrarInvitado(g); }
 // Cuentas antiguas sin PIN: se le pide que elija uno una vez
 function avisoPin(){ if (INVITADO && !INVITADO.sinPin && INVITADO.tieneEmail === false) return `<div class="card" style="margin-top:12px"><b>Añade tu email</b><p class="mut small" style="margin:4px 0 10px;line-height:1.5">Así, si algún día olvidas tu PIN, podrás recuperarlo tú solo.</p><div style="display:flex;gap:8px"><input class="txt" id="nuevo-mail" type="email" inputmode="email" autocomplete="email" placeholder="tu@email.com" style="flex:1"><button class="btn" id="guardarMail" style="width:auto;margin:0;padding:0 18px">Guardar</button></div></div>`;
-  return INVITADO && INVITADO.sinPin ? `<div class="card" style="border-color:#11484a;background:#0a2628;margin-top:12px"><b>Protege tu cuenta</b><p class="mut small" style="margin:4px 0 10px;line-height:1.5">Elige un PIN de 4 cifras para poder entrar desde otro móvil sin perder tus entrenos.</p><div style="display:flex;gap:8px"><input class="txt pin" id="nuevo-pin" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="••••" style="flex:1"><button class="btn" id="guardarPin" style="width:auto;margin:0;padding:0 18px">Guardar</button></div></div>` : ""; }
+  return INVITADO && INVITADO.sinPin ? `<div class="card" style="border-color:#11484a;background:#0a2628;margin-top:12px"><b>Protege tu cuenta</b><p class="mut small" style="margin:4px 0 10px;line-height:1.5">Elige un PIN de 4 cifras para poder entrar desde otro móvil sin perder tus entrenamientos.</p><div style="display:flex;gap:8px"><input class="txt pin" id="nuevo-pin" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="••••" style="flex:1"><button class="btn" id="guardarPin" style="width:auto;margin:0;padding:0 18px">Guardar</button></div></div>` : ""; }
 function entrarInvitado(g){
   INVITADO = g; CODE = g.token; COACH = ""; PROPIO = false;
   D = { invitado: true, cliente: g.nombre, semanas: [], dias: [] };
@@ -1005,10 +1007,10 @@ function viewInvHome(){
   <h1>Hola, ${esc(INVITADO.nombre.split(" ")[0])} 👋</h1>
   ${avisoPin()}
   ${installHTML()}
-  ${borr ? `<button class="btn" data-go="inv-entreno" style="margin-top:14px">Seguir con el entreno empezado${borr.dia ? " (" + esc(borr.dia) + ")" : ""}</button>` : ""}`;
+  ${borr ? `<button class="btn" data-go="inv-entreno" style="margin-top:14px">Seguir con el entrenamiento empezado${borr.dia ? " (" + esc(borr.dia) + ")" : ""}</button>` : ""}`;
   h += bloqueSemana(!!borr);
   if (ses.length) {
-    h += `<div class="mut small" style="margin:18px 0 0">Tus entrenos</div>`;
+    h += `<div class="mut small" style="margin:18px 0 0">Tus entrenamientos</div>`;
     ses.slice(0, 30).forEach(x => { const f = fDia(x.fecha), nS = x.ejercicios.reduce((a, e) => a + e.series.length, 0);
       h += `<button class="ses" data-ses="${esc(x.id)}"><span class="d">${f.n}<small>${f.m}</small></span><span class="t"><b>${esc(x.dia ? x.dia + " · " : "")}${esc(x.ejercicios.map(e => e.nombre).join(", "))}</b><small>${nEj(x.ejercicios.length)} · ${nSe(nS)}</small></span></button>`; });
   }
@@ -1051,9 +1053,9 @@ const etqDia = (d, i) => d.dia ? DIAS_L[d.dia - 1] : String.fromCharCode(65 + i)
 function bloqueSemana(hayBorrador){
   const sem = semanaInv();
   if (!sem.dias.length) return `<div class="card" style="margin-top:14px;border-color:#11484a;background:#0a2628"><b style="font:700 21px 'Barlow Condensed',sans-serif">Monta tu semana</b>
-    <p class="mut small" style="margin:6px 0 12px;line-height:1.5;color:#a9e2e3">Crea tus días de entreno (por ejemplo, "Lunes – Torso") con sus ejercicios. Así cada día te aparecerá todo preparado, con lo que hiciste la última vez.</p>
+    <p class="mut small" style="margin:6px 0 12px;line-height:1.5;color:#a9e2e3">Crea tus días de entrenamiento (por ejemplo, "Lunes – Torso") con sus ejercicios. Así cada día te aparecerá todo preparado, con lo que hiciste la última vez.</p>
     <button class="btn" data-go="inv-semana" style="margin:0">Crear mi semana</button></div>
-    <button class="btn ghost" data-go="inv-entreno" style="margin-top:10px">Apuntar un entreno suelto</button>`;
+    <button class="btn ghost" data-go="inv-entreno" style="margin-top:10px">Apuntar un entrenamiento suelto</button>`;
   const hoy = diaHoy(), toca = sem.dias.find(d => d.dia === hoy && !hechoDia(d)), racha = rachaSemanas();
   let h = "";
   if (toca && !hayBorrador) h += `<button class="cta-checkin" data-empezar="${esc(toca.id)}">${ICO_PESA_MINI}<span><b>Hoy toca: ${esc(toca.nombre)}</b><small>${nEj(toca.ejercicios.length)} · Toca para empezar</small></span></button>`;
@@ -1064,12 +1066,12 @@ function bloqueSemana(hayBorrador){
   h += `<div style="display:flex;justify-content:space-between;align-items:center;margin:16px 0 0"><span class="mut small">Tu semana</span><button class="link" data-go="inv-semana" style="margin:0;padding:0">Editar mi semana</button></div>`;
   sem.dias.forEach((d, i) => { const ok = hechoDia(d);
     h += `<button class="ses" data-empezar="${esc(d.id)}"><span class="d" style="${ok ? "background:#173322;color:#5fd38d" : ""}">${ok ? "✓" : etqDia(d, i)}<small>${d.dia ? DIAS_N[d.dia - 1].slice(0, 3) : "día"}</small></span><span class="t"><b>${esc(d.nombre)}</b><small>${nEj(d.ejercicios.length)}${ok ? " · Hecho esta semana" : ""}</small></span>${CHEV.replace('M6 9l6 6 6-6', 'M9 6l6 6-6 6')}</button>`; });
-  h += `<button class="btn ghost" data-go="inv-entreno" style="margin-top:6px">Apuntar un entreno suelto</button>`;
+  h += `<button class="btn ghost" data-go="inv-entreno" style="margin-top:6px">Apuntar un entrenamiento suelto</button>`;
   return h;
 }
 function empezarDia(id){
   const actual = leerBorrador();
-  if (actual && actual.ejercicios.some(e => e.nombre || e.series.some(x => x.r || x.k))) { toast("Tienes un entreno empezado: termínalo o descártalo primero"); go("inv-entreno"); return; }
+  if (actual && actual.ejercicios.some(e => e.nombre || e.series.some(x => x.r || x.k))) { toast("Tienes un entrenamiento empezado: termínalo o descártalo primero"); go("inv-entreno"); return; }
   const d = semanaInv().dias.find(x => x.id === id); if (!d) return;
   guardarBorrador({ id: "s" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), fecha: hoyISO(), diaId: d.id, dia: d.nombre, editando: false,
     ejercicios: d.ejercicios.map(e => { const prev = ultimaVez(e.nombre) || []; const n = e.series || prev.length || 3;
@@ -1118,9 +1120,9 @@ function viewInvEntreno(){
   const usados = [...new Set(((INVITADO && INVITADO.sesiones) || []).flatMap(x => x.ejercicios.map(e => e.nombre)).concat(semanaInv().dias.flatMap(d => d.ejercicios.map(e => e.nombre))))];
   const ult = (INVITADO.sesiones || [])[0];
   let h = `<button class="back" data-go="inicio">← Inicio</button>
-  <h1>${IB.editando ? "Editar entreno" : (IB.dia ? esc(IB.dia) : "Nuevo entreno")}</h1>
+  <h1>${IB.editando ? "Editar entrenamiento" : (IB.dia ? esc(IB.dia) : "Nuevo entrenamiento")}</h1>
   <label class="lb" for="ib-fecha">Fecha</label><input class="txt" type="date" id="ib-fecha" value="${IB.fecha}" max="${hoyISO()}">
-  ${!IB.editando && !IB.diaId && ult && IB.ejercicios.length === 1 && !IB.ejercicios[0].nombre ? `<button class="iadd" id="ibCopiar" style="width:100%">Repetir mi último entreno (${esc(ult.ejercicios.map(e => e.nombre).slice(0, 2).join(", "))}${ult.ejercicios.length > 2 ? "…" : ""})</button>` : ""}
+  ${!IB.editando && !IB.diaId && ult && IB.ejercicios.length === 1 && !IB.ejercicios[0].nombre ? `<button class="iadd" id="ibCopiar" style="width:100%">Repetir mi último entrenamiento (${esc(ult.ejercicios.map(e => e.nombre).slice(0, 2).join(", "))}${ult.ejercicios.length > 2 ? "…" : ""})</button>` : ""}
   <datalist id="ib-ejs">${usados.map(n => `<option value="${esc(n)}">`).join("")}</datalist>`;
   IB.ejercicios.forEach((e, i) => {
     h += `<div class="iex"><div class="iex-top"><input class="txt" list="ib-ejs" data-ibn="${i}" value="${esc(e.nombre)}" placeholder="Ejercicio (ej. Press banca)" autocomplete="off"><button class="ix" data-ibdel="${i}" aria-label="Quitar ejercicio">✕</button></div>
@@ -1136,8 +1138,8 @@ function viewInvEntreno(){
       ${c ? `<input class="txt" id="ib-dnom" value="${esc(c.nombre)}" placeholder="Nombre del día (ej. Torso)" maxlength="40" style="margin-top:10px">
       <div class="wds">${DIAS_L.map((l, k) => `<button class="wd ${c.dia === k + 1 ? "on" : ""}" data-ibwd="${k + 1}" aria-label="${DIAS_N[k]}">${l}</button>`).join("")}</div>` : ""}</div>`;
   }
-  h += `<button class="btn" id="ibGuardar">Guardar entreno</button>
-  ${IB.editando ? `<button class="link" id="ibBorrar" style="color:#ff8a8a">Borrar este entreno</button>` : `<button class="link" id="ibDescartar">Descartar</button>`}`;
+  h += `<button class="btn" id="ibGuardar">Guardar entrenamiento</button>
+  ${IB.editando ? `<button class="link" id="ibBorrar" style="color:#ff8a8a">Borrar este entrenamiento</button>` : `<button class="link" id="ibDescartar">Descartar</button>`}`;
   app.innerHTML = h;
 }
 function ibRepinta(){ const y = window.scrollY; guardarBorrador(IB); viewInvEntreno(); window.scrollTo(0, y); }
@@ -1157,7 +1159,7 @@ function ibGuardar(btn){
   (semNueva ? guardar("invGuardarSemana", semNueva).then(() => { INVITADO.semana = semNueva; guardarInv(); }) : Promise.resolve())
   .then(() => guardar("invGuardar", s)).then(() => {
     INVITADO.sesiones = [s].concat((INVITADO.sesiones || []).filter(x => x.id !== s.id)).sort((a, b) => a.fecha < b.fecha ? 1 : -1);
-    guardarInv(); guardarBorrador(null); IB = null; toast(semNueva ? "Entreno guardado y añadido a tu semana 💪" : "Entreno guardado 💪"); go("inicio");
+    guardarInv(); guardarBorrador(null); IB = null; toast(semNueva ? "Entrenamiento guardado y añadido a tu semana 💪" : "Entrenamiento guardado 💪"); go("inicio");
   }).catch(() => { btn.disabled = false; });
 }
 
@@ -1385,7 +1387,7 @@ app.addEventListener("click", ev=>{
   if (t.id === "ibGuardar") { ibGuardar(t); return; }
   if (t.id === "ibDescartar") { guardarBorrador(null); IB = null; go("inicio"); return; }
   if (t.id === "ibBorrar") { const id = IB.id; t.disabled = true;
-    guardar("invBorrar", id).then(() => { INVITADO.sesiones = INVITADO.sesiones.filter(x => x.id !== id); guardarInv(); guardarBorrador(null); IB = null; toast("Entreno borrado"); go("inicio"); }).catch(() => { t.disabled = false; });
+    guardar("invBorrar", id).then(() => { INVITADO.sesiones = INVITADO.sesiones.filter(x => x.id !== id); guardarInv(); guardarBorrador(null); IB = null; toast("Entrenamiento borrado"); go("inicio"); }).catch(() => { t.disabled = false; });
     return; }
   if (t.id === "aceptoPriv") { t.disabled = true; marcarPrivLocal(); D.privacidad = "app";
     const fin = () => route();
