@@ -211,6 +211,14 @@
   .ck-bas{margin-top:12px;border-top:1px solid var(--line);padding-top:10px}
   .ck-bas summary{cursor:pointer;font-weight:600;font-size:14px;color:var(--acc-txt)}
   .esc-b{margin-top:14px}
+  .esc-g{margin:18px 0 -4px;font:700 13px Inter,sans-serif;letter-spacing:.08em;text-transform:uppercase;color:var(--acc)}
+  .esc5{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
+  .esc5 button{height:40px;border-radius:10px;border:2px solid var(--c);background:transparent;color:var(--txt);font:700 18px "Barlow Condensed",sans-serif;cursor:pointer;padding:0}
+  .esc5 button.on{background:var(--c);color:#1a1a1a}
+  .esc-d{margin-top:8px;font-size:13px;line-height:1.45;padding:9px 11px;border-radius:10px;background:var(--card2);border-left:4px solid var(--c,var(--line))}
+  .orina{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:4px}
+  .orina button{height:40px;border-radius:9px;border:2px solid transparent;color:#3a3200;font:700 16px "Barlow Condensed",sans-serif;cursor:pointer;padding:0;opacity:.75}
+  .orina button.on{border-color:var(--txt);opacity:1;transform:scale(1.06)}
   .esc-t{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:6px}
   .esc-t span{font-weight:600;font-size:14.5px} .esc-t small{color:var(--mut);font-size:11.5px}
   .esc{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:4px}
@@ -690,13 +698,79 @@ function pintarCuerpo(){
   h += `<a class="wa" href="${esc(waLink(`Hola Aitor, soy ${nombreCliente()}. Tengo una duda con mi evolución de la báscula: `))}" target="_blank" rel="noopener">${WA_ICON}Pregunta a Aitor por tu evolución</a>`;
   app.innerHTML = h;
 }
-// Check-in semanal: peso y cintura, báscula (opcional), cómo ha ido la semana (1-10), comentario y fotos.
+// Check-in semanal: peso y cintura, báscula (opcional), cómo ha ido la semana (escalas 1-5 de Aitor), comentario y fotos.
 // Se guarda en su hoja de entreno (Báscula), en "Seguimiento Semanal" y en su ficha ("Seguimiento del peso").
-const ESC = [
-  { k: "hambre", t: "Hambre", a: "1 nada · 10 muchísima" },
-  { k: "energia", t: "Energía", a: "1 muy baja · 10 a tope" },
-  { k: "sueno", t: "Sueño", a: "1 fatal · 10 genial" },
-  { k: "adherencia", t: "Adherencia al plan", a: "1 nada · 10 al 100 %" }];
+// Escalas 1-5 de Aitor (mismas frases y colores que su pestaña "Seguimiento Semanal")
+const C5 = ["#f28b82", "#f6b9b4", "#ffe599", "#d9ead3", "#93c47d"], C5H = ["#f28b82", "#ffe599", "#93c47d", "#ffe599", "#f28b82"];
+const ESC_GR = [
+  { g: "Entrenamiento", l: [
+    { k: "recuperacion", t: "Recuperación entre sesiones", d: [
+      "Llego destrozad@ a cada sesión: no me recupero de un entrenamiento a otro.",
+      "Llego a muchas sesiones cargad@ o con agujetas y rindo menos de lo normal.",
+      "Me recupero justo: algunas sesiones llego algo cargad@.",
+      "Llego bien a casi todas las sesiones, solo alguna molestia puntual.",
+      "Llego totalmente recuperad@ y con energía a todas las sesiones."] },
+    { k: "entreno", t: "Seguimiento del entrenamiento", d: [
+      "No he entrenado ningún día.",
+      "No he hecho 1-2 sesiones y/o no he cumplido el RPE nunca.",
+      "Me he dejado ejercicios por hacer en 1-2 sesiones y/o me he saltado el RPE más de 10 veces.",
+      "Me he saltado el RPE de 1 a 10 veces en la semana.",
+      "He entrenado todos los días y he cumplido con todo."] }] },
+  { g: "Nutrición", l: [
+    { k: "hambre", t: "Hambre - saciedad", c: C5H, d: [
+      "Tengo muchísima hambre.",
+      "Tengo hambre, necesito más comida.",
+      "Estoy bien, me encuentro saciad@.",
+      "Me cuesta acabar la comida.",
+      "Me resulta muy difícil acabar la comida."] },
+    { k: "hidratacion", t: "Hidratación", orina: true },
+    { k: "nutricion", t: "Seguimiento de la nutrición", d: [
+      "No he cumplido con nada.",
+      "No he cumplido calorías durante 3 días o menos.",
+      "Sí he cumplido con las calorías pero no con los intercambios o macros.",
+      "He cumplido calorías e intercambios o macros, pero no con todas las pautas de selección de alimentos.",
+      "He cumplido con todo."] }] },
+  { g: "Cómo estás", l: [
+    { k: "estres", t: "Nivel de estrés", d: [
+      "Estrés incapacitante: vivo situaciones que me resultan abrumadoras, con síntomas físicos graves que me impiden hacer vida normal. Mis emociones son negativas y siento mucha desesperación.",
+      "Estrés alto: vivo situaciones muy estresantes y persistentes en varios frentes (trabajo, familia, pareja…). Tengo ansiedad evidente y síntomas físicos preocupantes. Me cuesta afrontar el día a día.",
+      "Estrés moderado: vivo situaciones estresantes persistentes. Mis emociones fluctúan mucho y me noto en tensión a menudo, con algunos síntomas físicos manejables (dolores musculares, cambios de apetito, problemas de sueño…).",
+      "Estrés bajo: vivo algunas situaciones estresantes temporales, con emociones controlables. A veces aparecen síntomas leves y ocasionales (tensión muscular, dolor de cabeza…). Gozo de buena salud general.",
+      "Sin estrés: no vivo situaciones estresantes, mis emociones son generalmente positivas, tengo muy buena salud y me siento muy bien."] },
+    { k: "motivacion", t: "Grado de motivación", d: [
+      "Me está resultando imposible cumplir con el plan, no me siento bien y estoy perdiendo las ganas de continuar.",
+      "A veces dudo de mi progreso, saco energías de donde no hay. Sigo por compromiso, pero ya no siento la misma ilusión.",
+      "Me siento un poco indiferente: cumplo con el plan como un autómata porque sé qué quiero conseguir y que este es el camino.",
+      "Por lo general siento que estoy donde debo estar. Hay momentos más duros, pero me encanta lo que hago y estoy dispuest@ a afrontar lo que venga.",
+      "Me encanta mi preparación, lo estoy disfrutando muchísimo y me levanto todos los días pensando en que me voy a comer el mundo."] },
+    { k: "horasSueno", t: "Horas de sueño", horas: true },
+    { k: "sueno", t: "Calidad del sueño", d: [
+      "Insomnio: tengo problemas graves de insomnio, pesadillas frecuentes y un sueño interrumpido constantemente.",
+      "Duermo mal: 4 noches o más he tenido dificultades para conciliar el sueño y despertares en los que me cuesta volver a dormirme.",
+      "Duermo regular: 4 noches o más duermo bien, pero en otras me despierto y me cuesta volver a dormirme.",
+      "Duermo bien: no me cuesta conciliar el sueño y, aunque a veces me despierto, me vuelvo a dormir enseguida.",
+      "Duermo genial: tengo un sueño profundo y sin interrupciones."] },
+    { k: "cansancio", t: "Cansancio general", d: [
+      "Fatiga incapacitante: noto una fatiga extrema. Me siento completamente agotad@, incapaz de hacer vida normal y necesito descansar urgentemente.",
+      "Fatiga alta: siento un cansancio notable. No mantengo el rendimiento que me gustaría y tengo problemas de concentración.",
+      "Fatiga moderada: me siento cansad@ y con poca energía en algunos momentos del día. Cumplo con mi día a día, pero me supone un esfuerzo extra.",
+      "Energía adecuada: me siento con energía y no necesito un esfuerzo extra para cumplir con mi día a día.",
+      "Energía óptima: me siento completamente descansad@ y llen@ de energía, sin ningún síntoma de fatiga."] }] }];
+const ESC = ESC_GR.flatMap(g => g.l);
+const ORINA = ["#fbfbe8", "#f7f5c2", "#f3ef8c", "#f1e24c", "#ecd04a", "#e5bf2c", "#cbb04c", "#a8922f"];
+const orinaTxt = n => n <= 3 ? "Bien hidratad@" : n <= 6 ? "Deshidratación: bebe más agua" : "Deshidratación severa: bebe más agua ya";
+function escHTML(e){
+  const v = CK.esc[e.k];
+  if (e.horas) return `<div class="esc-b"><div class="esc-t"><span>${e.t}</span><small>media por noche</small></div>
+    <input class="txt" id="ck-horas" inputmode="decimal" autocomplete="off" placeholder="Ej.: 7,5" value="${v != null ? String(v).replace(".", ",") : ""}" style="max-width:140px"></div>`;
+  if (e.orina) return `<div class="esc-b"><div class="esc-t"><span>${e.t}</span><small>¿de qué color suele ser tu orina?</small></div>
+    <div class="orina" role="radiogroup" aria-label="Color de la orina">${ORINA.map((c, i) => `<button class="${v === i + 1 ? "on" : ""}" style="background:${c}" data-esc="${e.k},${i + 1}" role="radio" aria-checked="${v === i + 1}">${i + 1}</button>`).join("")}</div>
+    <div class="esc-d">${v ? orinaTxt(v) : ""}</div></div>`;
+  const col = e.c || C5;
+  return `<div class="esc-b"><div class="esc-t"><span>${e.t}</span></div>
+    <div class="esc5" role="radiogroup" aria-label="${e.t}">${[1,2,3,4,5].map(n => `<button class="${v === n ? "on" : ""}" style="--c:${col[n-1]}" data-esc="${e.k},${n}" role="radio" aria-checked="${v === n}">${n}</button>`).join("")}</div>
+    <div class="esc-d" ${v ? `style="--c:${col[v-1]}"` : ""}>${v ? e.d[v-1] : `<span class="mut">Toca un número para ver qué significa.</span>`}</div></div>`;
+}
 let CK = null;
 function viewCheckin(){
   if (!BASC) BASC = leerBasc();
@@ -716,8 +790,8 @@ function viewCheckin(){
       <div class="grid2">${bas.map(campo).join("")}</div></details>
   </div>
   <div class="card"><b style="font:700 19px 'Barlow Condensed',sans-serif;letter-spacing:.02em">¿Cómo ha ido tu semana?</b>
-    ${ESC.map(e => `<div class="esc-b"><div class="esc-t"><span>${e.t}</span><small>${e.a}</small></div>
-      <div class="esc" role="radiogroup" aria-label="${e.t}">${[1,2,3,4,5,6,7,8,9,10].map(n => `<button class="${CK.esc[e.k] === n ? "on" : ""}" data-esc="${e.k},${n}" role="radio" aria-checked="${CK.esc[e.k] === n}">${n}</button>`).join("")}</div></div>`).join("")}
+    <div class="mut small" style="margin:4px 0 2px;line-height:1.5">Puntúa del 1 al 5 cómo ha ido esta semana. Sé sincer@: así Aitor puede ajustar tu plan.</div>
+    ${ESC_GR.map(g => `<div class="esc-g">${g.g}</div>${g.l.map(escHTML).join("")}`).join("")}
     <label class="lb" for="ck-com">Comentario <span class="mut" style="font-weight:400">(opcional)</span></label>
     <textarea class="txt" id="ck-com" rows="3" maxlength="1000" placeholder="Cómo te has sentido, si has tenido algún problema, algo que quieras contarle a Aitor…">${esc(CK.com)}</textarea>
   </div>
@@ -750,6 +824,7 @@ function ckLeer(){ // guarda lo escrito antes de repintar
   if (!CK) return; const c = document.getElementById("ck-com"); if (c) CK.com = c.value;
   CK.vals = {}; MET.forEach(m => { const i = document.getElementById("ck-" + m.k); if (i) CK.vals[m.k] = i.value; });
   const f = document.getElementById("ck-fecha"); if (f) CK.fecha = f.value;
+  const hs = document.getElementById("ck-horas"); if (hs) { const n = parseFloat(hs.value.replace(",", ".")); if (hs.value.trim() === "") delete CK.esc.horasSueno; else CK.esc.horasSueno = isNaN(n) ? hs.value : n; }
 }
 function ckRepinta(){ ckLeer(); const y = window.scrollY, v = CK.vals || {}, f = CK.fecha; viewCheckin(); Object.keys(v).forEach(k => { const i = document.getElementById("ck-" + k); if (i) i.value = v[k]; }); if (f) document.getElementById("ck-fecha").value = f; window.scrollTo(0, y); }
 function guardarCheckin(btn){
@@ -760,8 +835,10 @@ function guardarCheckin(btn){
     if (raw === "") { if (m.ob) fallo = fallo || "Apunta tu peso para guardar el check-in."; datos[m.k] = ""; return; }
     if (isNaN(v) || v < m.min || v > m.max) fallo = fallo || `Revisa ${m.t.toLowerCase()}: debe estar entre ${m.min} y ${m.max}.`;
     datos[m.k] = v; });
-  const faltan = ESC.filter(e => !CK.esc[e.k]);
-  if (faltan.length) fallo = fallo || `Puntúa del 1 al 10: ${faltan.map(e => e.t.toLowerCase()).join(", ")}.`;
+  const hs = CK.esc.horasSueno;
+  if (hs != null && (typeof hs !== "number" || hs < 2 || hs > 14)) fallo = fallo || "Revisa las horas de sueño: pon la media por noche, por ejemplo 7,5.";
+  const faltan = ESC.filter(e => CK.esc[e.k] == null);
+  if (faltan.length) fallo = fallo || (faltan.length > 2 ? `Te faltan ${faltan.length} preguntas de "¿Cómo ha ido tu semana?" (la primera: ${faltan[0].t.toLowerCase()}).` : `Te falta por contestar: ${faltan.map(e => e.t.toLowerCase()).join(" y ")}.`);
   if (datos.fecha > hoyISO()) fallo = fallo || "La fecha no puede ser futura.";
   if (fallo) { err.textContent = fallo; err.hidden = false; err.scrollIntoView({ behavior: "smooth", block: "center" }); return; }
   ESC.forEach(e => datos[e.k] = CK.esc[e.k]);
