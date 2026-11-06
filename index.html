@@ -821,6 +821,9 @@ function viewInvAlta(msg){
     <label class="lb" for="inv-pin">Elige un PIN de 4 cifras</label>
     <input class="txt pin" id="inv-pin" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="new-password" placeholder="••••">
     <div class="mut small" style="margin-top:6px">Te servirá para entrar en tu cuenta desde otro móvil.</div>
+    <label class="lb" for="inv-mail">Email <span class="mut" style="font-weight:400">(opcional)</span></label>
+    <input class="txt" id="inv-mail" type="email" inputmode="email" autocomplete="email" placeholder="tu@email.com">
+    <div class="mut small" style="margin-top:6px">Solo para recuperar tu PIN si lo olvidas.</div>
     ${msg ? `<div class="field-err">${esc(msg)}</div>` : ""}
     <button class="btn" id="invCrear" style="margin-top:18px">Empezar gratis</button>
     <button class="onb-skip" id="invYaTengo" style="color:var(--acc-txt);font-weight:600">¿Ya tienes cuenta? Entra con tu PIN</button>
@@ -841,7 +844,8 @@ function viewInvPin(msg, wa){
     <input class="txt pin" id="pin-pin" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="current-password" placeholder="••••">
     ${msg ? `<div class="field-err" ${/ya tiene una cuenta/.test(msg) ? 'style="color:#a9e2e3"' : ""}>${esc(msg)}</div>` : ""}
     <button class="btn" id="invPinOk" style="margin-top:18px">Entrar</button>
-    <a class="onb-skip" style="text-align:center;text-decoration:none" href="${esc(waLink("Hola Aitor, he olvidado el PIN de mi cuenta gratis de la app. Mi WhatsApp es: "))}" target="_blank" rel="noopener">He olvidado mi PIN</a>
+    ${msg && /Escribe a Aitor/.test(msg) ? `<a class="lock-cta" style="margin-top:10px" href="${esc(waLink("Hola Aitor, he olvidado el PIN de mi cuenta gratis de la app. Mi WhatsApp es: " + (wa || "")))}" target="_blank" rel="noopener">${WA_ICON}Escribir a Aitor</a>` : ""}
+    <button class="onb-skip" id="invOlvido">He olvidado mi PIN</button>
     <button class="onb-skip" id="invNueva">Crear una cuenta nueva</button>
   </div>`;
   if (wa) setTimeout(() => { const p = document.getElementById("pin-pin"); if (p) p.focus(); }, 50);
@@ -864,14 +868,31 @@ function confirmarWa(nom, wa, pin){
     if (ev.target.id === "waSi") { cerrar(); const b = document.getElementById("invCrear"); b.dataset.ok = "1"; b.click(); }
   });
 }
+function viewInvReset(wa, mail, msg){
+  document.body.classList.add("onb");
+  app.innerHTML = `<div class="onb-wrap">
+    <div class="onb-ico">${ICO.lock}</div>
+    <h1>Elige un PIN nuevo</h1>
+    <p>Te hemos enviado un código de 6 cifras a <b>${esc(mail)}</b>. Si no lo ves, mira también en spam.</p>
+    <label class="lb" for="rc-cod">Código del email</label>
+    <input class="txt pin" id="rc-cod" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="one-time-code" placeholder="••••••">
+    <label class="lb" for="rc-pin">Tu PIN nuevo</label>
+    <input class="txt pin" id="rc-pin" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="new-password" placeholder="••••">
+    ${msg ? `<div class="field-err">${esc(msg)}</div>` : ""}
+    <button class="btn" id="rcOk" data-wa="${esc(wa)}" data-mail="${esc(mail)}" style="margin-top:18px">Guardar PIN y entrar</button>
+    <button class="onb-skip" id="invOlvido" data-wa="${esc(wa)}">Reenviar el código</button>
+  </div>`;
+  setTimeout(() => { const c = document.getElementById("rc-cod"); if (c) c.focus(); }, 50);
+}
 function okInvitado(r, cod){ const g = { token: r.token, nombre: r.nombre, codigo: cod, sesiones: r.sesiones || [] }; INVITADO = g; guardarInv(); store.del(); document.body.classList.remove("onb"); entrarInvitado(g); }
 // Cuentas antiguas sin PIN: se le pide que elija uno una vez
-function avisoPin(){ return INVITADO && INVITADO.sinPin ? `<div class="card" style="border-color:#11484a;background:#0a2628;margin-top:12px"><b>Protege tu cuenta</b><p class="mut small" style="margin:4px 0 10px;line-height:1.5">Elige un PIN de 4 cifras para poder entrar desde otro móvil sin perder tus entrenos.</p><div style="display:flex;gap:8px"><input class="txt pin" id="nuevo-pin" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="••••" style="flex:1"><button class="btn" id="guardarPin" style="width:auto;margin:0;padding:0 18px">Guardar</button></div></div>` : ""; }
+function avisoPin(){ if (INVITADO && !INVITADO.sinPin && INVITADO.tieneEmail === false) return `<div class="card" style="margin-top:12px"><b>Añade tu email</b><p class="mut small" style="margin:4px 0 10px;line-height:1.5">Así, si algún día olvidas tu PIN, podrás recuperarlo tú solo.</p><div style="display:flex;gap:8px"><input class="txt" id="nuevo-mail" type="email" inputmode="email" autocomplete="email" placeholder="tu@email.com" style="flex:1"><button class="btn" id="guardarMail" style="width:auto;margin:0;padding:0 18px">Guardar</button></div></div>`;
+  return INVITADO && INVITADO.sinPin ? `<div class="card" style="border-color:#11484a;background:#0a2628;margin-top:12px"><b>Protege tu cuenta</b><p class="mut small" style="margin:4px 0 10px;line-height:1.5">Elige un PIN de 4 cifras para poder entrar desde otro móvil sin perder tus entrenos.</p><div style="display:flex;gap:8px"><input class="txt pin" id="nuevo-pin" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="••••" style="flex:1"><button class="btn" id="guardarPin" style="width:auto;margin:0;padding:0 18px">Guardar</button></div></div>` : ""; }
 function entrarInvitado(g){
   INVITADO = g; CODE = g.token; COACH = ""; PROPIO = false;
   D = { invitado: true, cliente: g.nombre, semanas: [], dias: [] };
   route();
-  api("invEntrar", CODE).then(r => { if (!INVITADO) return; INVITADO.nombre = r.nombre; INVITADO.sinPin = !!r.sinPin;
+  api("invEntrar", CODE).then(r => { if (!INVITADO) return; INVITADO.nombre = r.nombre; INVITADO.sinPin = !!r.sinPin; INVITADO.tieneEmail = r.tieneEmail !== false;
       if (r.token && r.token !== INVITADO.token) { INVITADO.token = r.token; CODE = r.token; } INVITADO.sesiones = mezclarSesiones(r.sesiones); guardarInv(); D.cliente = r.nombre;
       if (!/^#inv-/.test(location.hash)) route(); vaciarCola(); })
     .catch(e => { if (!e.red) { const cod = g.codigo; salirInvitado(); CODE = cod; viewInvPin(e.message); } });
@@ -1111,15 +1132,35 @@ app.addEventListener("click", ev=>{
   if (t.id === "invCrear") { const nom = document.getElementById("inv-nom").value.trim(), wa = document.getElementById("inv-wa").value.trim();
     if (nom.length < 2) return viewInvAlta("Escribe tu nombre.");
     if (wa.replace(/\D/g, "").length < 9) return viewInvAlta("Escribe tu número de WhatsApp.");
-    const pin = document.getElementById("inv-pin").value.trim();
+    const pin = document.getElementById("inv-pin").value.trim(), mail = document.getElementById("inv-mail").value.trim();
     if (!/^\d{4}$/.test(pin)) return viewInvAlta("Elige un PIN de 4 cifras.");
+    if (mail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)) return viewInvAlta("Revisa tu email (o déjalo vacío).");
     if (t.dataset.ok !== "1") { confirmarWa(nom, wa, pin); return; }
     const cod = CODE; t.disabled = true;
-    api("invAlta", cod, nom, wa, pin).then(r => { okInvitado(r, cod); toast("¡Bienvenido/a, " + r.nombre.split(" ")[0] + "!"); })
+    api("invAlta", cod, nom, wa, pin, mail).then(r => { okInvitado(r, cod); toast("¡Bienvenido/a, " + r.nombre.split(" ")[0] + "!"); })
       .catch(e => { if (e.message === "EXISTE") viewInvPin("Este WhatsApp ya tiene una cuenta. Escribe tu PIN para entrar en ella.", wa);
                     else viewInvAlta(e.red ? "Sin conexión. Inténtalo cuando tengas cobertura." : e.message); });
     return; }
   if (t.id === "invYaTengo") { viewInvPin(); return; }
+  if (t.id === "invOlvido") { const i = document.getElementById("pin-wa"), wa = (i ? i.value : t.dataset.wa || "").trim();
+    if (wa.replace(/\D/g, "").length < 9) return viewInvPin("Escribe primero tu WhatsApp y vuelve a pulsar «He olvidado mi PIN».", wa);
+    const cod = CODE; t.disabled = true;
+    api("invPedirCodigo", cod, wa).then(mail => viewInvReset(wa, mail))
+      .catch(e => { if (e.message === "SINEMAIL") viewInvPin("Tu cuenta no tiene email para recuperar el PIN. Escribe a Aitor por WhatsApp y te lo resetea.", wa);
+                    else viewInvPin(e.red ? "Sin conexión. Inténtalo cuando tengas cobertura." : e.message, wa); });
+    return; }
+  if (t.id === "rcOk") { const c = document.getElementById("rc-cod").value.trim(), pin = document.getElementById("rc-pin").value.trim(), wa = t.dataset.wa, mail = t.dataset.mail;
+    if (!/^\d{6}$/.test(c)) return viewInvReset(wa, mail, "El código tiene 6 cifras.");
+    if (!/^\d{4}$/.test(pin)) return viewInvReset(wa, mail, "Elige un PIN de 4 cifras.");
+    const cod = CODE; t.disabled = true;
+    api("invResetPin", cod, wa, c, pin).then(r => { okInvitado(r, cod); toast("PIN cambiado. ¡Hola de nuevo, " + r.nombre.split(" ")[0] + "!"); })
+      .catch(e => viewInvReset(wa, mail, e.red ? "Sin conexión. Inténtalo cuando tengas cobertura." : e.message));
+    return; }
+  if (t.id === "guardarMail") { const m = document.getElementById("nuevo-mail").value.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(m)) { toast("Revisa tu email", true); return; }
+    t.disabled = true;
+    api("invPonerEmail", CODE, m).then(() => { INVITADO.tieneEmail = true; guardarInv(); toast("Email guardado"); route(); }).catch(e => { t.disabled = false; toast(e.red ? "Sin conexión" : e.message, true); });
+    return; }
   if (t.id === "invNueva") { viewInvAlta(); return; }
   if (t.id === "invPinOk") { const wa = document.getElementById("pin-wa").value.trim(), pin = document.getElementById("pin-pin").value.trim();
     if (wa.replace(/\D/g, "").length < 9) return viewInvPin("Escribe tu número de WhatsApp.", wa);
