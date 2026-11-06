@@ -1,6 +1,6 @@
 // Entrenaitor: guarda la app en el móvil para que abra rápido.
 // Los datos de la rutina siempre se piden a Google (nunca se guardan aquí).
-const VERSION = 'entrenaitor-v31';
+const VERSION = 'entrenaitor-v32';
 const SHELL = ['./', 'index.html', 'manifest.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png', 'icons/nutricion.svg'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(VERSION).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
