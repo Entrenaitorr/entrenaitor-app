@@ -842,7 +842,7 @@ function viewInvPin(msg, wa){
     <input class="txt" id="pin-wa" type="tel" inputmode="tel" autocomplete="tel" placeholder="600 000 000" value="${esc(wa || "")}">
     <label class="lb" for="pin-pin">Tu PIN</label>
     <input class="txt pin" id="pin-pin" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="current-password" placeholder="••••">
-    ${msg ? `<div class="field-err" ${/ya tiene una cuenta/.test(msg) ? 'style="color:#a9e2e3"' : ""}>${esc(msg)}</div>` : ""}
+    ${msg ? `<div class="field-err" ${/ya tiene una cuenta|Parece que es tu PIN/.test(msg) ? 'style="color:#a9e2e3"' : ""}>${esc(msg)}</div>` : ""}
     <button class="btn" id="invPinOk" style="margin-top:18px">Entrar</button>
     ${msg && /Escribe a Aitor/.test(msg) ? `<a class="lock-cta" style="margin-top:10px" href="${esc(waLink("Hola Aitor, he olvidado el PIN de mi cuenta gratis de la app. Mi WhatsApp es: " + (wa || "")))}" target="_blank" rel="noopener">${WA_ICON}Escribir a Aitor</a>` : ""}
     <button class="onb-skip" id="invOlvido">He olvidado mi PIN</button>
@@ -983,13 +983,14 @@ function viewLogin(msg){
     <img src="${LOGO}" alt="" style="width:120px;height:120px;display:block;margin:0 auto 22px;border-radius:26px">
     <img src="${WM}" alt="Entrenaitor" style="width:300px;max-width:100%;display:block;margin:0 auto">
     <p class="mut" style="text-align:center;margin:8px 0 24px">Tu entrenamiento, serie a serie</p>
-    <label class="lb" for="cod">Tu código de acceso</label>
+    <label class="lb" for="cod">Soy cliente: mi código de acceso</label>
     <input class="txt code" id="cod" autocomplete="off" autocapitalize="characters" value="${esc(CODE)}" placeholder="XXXXXX">
     <button class="btn" id="entrar">Entrar</button>
     ${msg ? `<div class="err-box">${esc(msg)}</div>` : ""}
     <p class="mut small" style="text-align:center;margin-top:16px">Te lo da tu entrenador.</p>
-    <div style="display:flex;align-items:center;gap:10px;margin:26px 0 4px;color:var(--mut);font-size:13px"><span style="flex:1;height:1px;background:var(--line)"></span>¿Aún no entrenas con Aitor?<span style="flex:1;height:1px;background:var(--line)"></span></div>
-    <button class="btn ghost" id="probarGratis" style="margin-top:10px">Probar gratis</button></div>`;
+    <div style="display:flex;align-items:center;gap:10px;margin:26px 0 4px;color:var(--mut);font-size:13px"><span style="flex:1;height:1px;background:var(--line)"></span>Versión gratis<span style="flex:1;height:1px;background:var(--line)"></span></div>
+    <button class="btn ghost" id="gratisPin" style="margin-top:10px">Ya tengo cuenta gratis: entrar con mi PIN</button>
+    <button class="btn ghost" id="probarGratis" style="margin-top:8px">Crear cuenta gratis</button></div>`;
 }
 
 function viewHome(){
@@ -1128,6 +1129,7 @@ app.addEventListener("click", ev=>{
   if (ev.target.id === "prSheet") { abrirSheet(false); return; }
   const t = ev.target.closest("button"); if (!t) return;
   if (t.id === "pr-pick") { abrirSheet(true); return; }
+  if (t.id === "gratisPin") { t.disabled = true; api("codigoInvitado").then(c => { CODE = c; viewInvPin(); }).catch(e => { t.disabled = false; toast(e.red ? "Sin conexión" : e.message, true); }); return; }
   if (t.id === "probarGratis") { t.disabled = true; api("codigoInvitado").then(c => { CODE = c; viewInvAlta(); }).catch(e => { t.disabled = false; toast(e.red ? "Sin conexión" : e.message, true); }); return; }
   if (t.id === "invCrear") { const nom = document.getElementById("inv-nom").value.trim(), wa = document.getElementById("inv-wa").value.trim();
     if (nom.length < 2) return viewInvAlta("Escribe tu nombre.");
@@ -1202,7 +1204,9 @@ app.addEventListener("click", ev=>{
     row.querySelectorAll(".dm-b").forEach(b => { const on = +b.dataset.v === v; b.classList.toggle("on", on); b.setAttribute("aria-checked", on); });
     row.querySelector(".dm-txt").textContent = DMAT[v-1].t; return; }
   if (t.dataset.prej != null) { const x = PROG_LISTA[+t.dataset.prej]; if (x) PROG_SEL = x.ej; abrirSheet(false); pintarProgreso(); window.scrollTo(0,0); return; }
-  if (t.id === "entrar"){ const v = document.getElementById("cod").value.trim().toUpperCase(); if (!v) return; CODE = v; cargar(); return; }
+  if (t.id === "entrar"){ const v = document.getElementById("cod").value.trim().toUpperCase(); if (!v) return;
+    if (/^\d{4}$/.test(v)) { t.disabled = true; api("codigoInvitado").then(c => { CODE = c; viewInvPin("Parece que es tu PIN de la cuenta gratis: escribe también tu WhatsApp."); setTimeout(() => { const p = document.getElementById("pin-pin"); if (p) p.value = v; const w = document.getElementById("pin-wa"); if (w) w.focus(); }, 60); }).catch(e => { t.disabled = false; toast(e.red ? "Sin conexión" : e.message, true); }); return; }
+    CODE = v; cargar(); return; }
   if (t.dataset.nseg){ const d = nutriDatos(); d[t.dataset.nseg] = t.dataset.v; nutriGuardar(d);
     t.parentElement.querySelectorAll("button").forEach(x => x.classList.toggle("on", x === t)); nutriActualizar(); return; }
   if (t.id === "instYes" && installEvt){ installEvt.prompt(); installEvt.userChoice.finally(()=>{ installEvt = null; route(); }); return; }
