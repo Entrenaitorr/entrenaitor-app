@@ -208,6 +208,10 @@
   .stp{display:flex;align-items:center;gap:4px}
   .stp span{min-width:44px;text-align:center;font:700 18px "Barlow Condensed",sans-serif;line-height:1}
   .stp span small{display:block;font:500 10px Inter;color:var(--mut)}
+  .chkrow{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:none;border:0;padding:0;color:var(--txt);cursor:pointer;font:inherit}
+  .chkrow .box{flex:0 0 24px;height:24px;border-radius:7px;border:2px solid #2b3a41;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:14px}
+  .chkrow[aria-pressed="true"] .box{background:var(--acc);border-color:var(--acc)}
+  .chkrow b{display:block;font-size:14.5px} .chkrow small{display:block;color:var(--mut);font-size:12.5px;margin-top:2px}
   .ult{margin-top:8px;font-size:12.5px;color:var(--mut)} .ult b{color:#a9e2e3;font-weight:600}
   .txt.pin{letter-spacing:.5em;text-align:center;font-size:20px}
   .inv-check{display:flex;gap:10px;align-items:flex-start;font-size:12.5px;line-height:1.5;color:var(--mut);margin-top:14px}
@@ -1057,8 +1061,15 @@ function viewInvEntreno(){
       <div class="ihead"><span>Serie</span><span>Reps</span><span>Kg</span><span></span></div>
       ${e.series.map((x, j) => { const p = (e.prev || [])[j] || []; return `<div class="iset"><span>${j + 1}</span><input class="txt" inputmode="numeric" data-ibs="${i},${j},r" value="${esc(x.r)}" placeholder="${esc(p[0] || "0")}"><input class="txt" inputmode="decimal" data-ibs="${i},${j},k" value="${esc(x.k)}" placeholder="${esc(p[1] ? String(p[1]).replace(".", ",") : "kg")}"><button class="ix" data-ibquita="${i},${j}" aria-label="Quitar serie">−</button></div>`; }).join("")}
       <button class="iadd" data-ibset="${i}">+ Añadir serie</button></div>`; });
-  h += `<button class="iadd" id="ibEj" style="width:100%">+ Añadir ejercicio</button>
-  <button class="btn" id="ibGuardar">Guardar entreno</button>
+  h += `<button class="iadd" id="ibEj" style="width:100%">+ Añadir ejercicio</button>`;
+  if (!IB.editando && !IB.diaId && semanaInv().dias.length < 7) {
+    const c = IB.comoDia || null;
+    h += `<div class="iex" style="border-color:${c ? "#11484a" : "var(--line)"};background:${c ? "#0a2628" : "var(--card)"}">
+      <button class="chkrow" id="ibComoDia" aria-pressed="${!!c}"><span class="box">${c ? "✓" : ""}</span><span><b>Guardar también como día de mi semana</b><small>Así la próxima vez te aparecerá preparado</small></span></button>
+      ${c ? `<input class="txt" id="ib-dnom" value="${esc(c.nombre)}" placeholder="Nombre del día (ej. Torso)" maxlength="40" style="margin-top:10px">
+      <div class="wds">${DIAS_L.map((l, k) => `<button class="wd ${c.dia === k + 1 ? "on" : ""}" data-ibwd="${k + 1}" aria-label="${DIAS_N[k]}">${l}</button>`).join("")}</div>` : ""}</div>`;
+  }
+  h += `<button class="btn" id="ibGuardar">Guardar entreno</button>
   ${IB.editando ? `<button class="link" id="ibBorrar" style="color:#ff8a8a">Borrar este entreno</button>` : `<button class="link" id="ibDescartar">Descartar</button>`}`;
   app.innerHTML = h;
 }
@@ -1068,10 +1079,18 @@ function ibGuardar(btn){
     .filter(e => e.nombre && e.series.length);
   if (!ej.length) { toast("Apunta al menos un ejercicio con una serie", true); return; }
   const s = { id: IB.id, fecha: document.getElementById("ib-fecha").value || hoyISO(), diaId: IB.diaId || "", dia: IB.dia || "", ejercicios: ej };
+  let semNueva = null;
+  if (IB.comoDia && !IB.diaId) {
+    const sem = JSON.parse(JSON.stringify(semanaInv())), c = IB.comoDia;
+    const d = { id: "d" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), nombre: c.nombre.trim() || (c.dia ? DIAS_N[c.dia - 1] : "Día " + String.fromCharCode(65 + sem.dias.length)), dia: c.dia || null,
+      ejercicios: ej.map(e => ({ nombre: e.nombre, series: Math.max(1, Math.min(10, e.series.length)) })) };
+    sem.dias.push(d); semNueva = sem; s.diaId = d.id; s.dia = d.nombre;
+  }
   btn.disabled = true;
-  guardar("invGuardar", s).then(() => {
+  (semNueva ? guardar("invGuardarSemana", semNueva).then(() => { INVITADO.semana = semNueva; guardarInv(); }) : Promise.resolve())
+  .then(() => guardar("invGuardar", s)).then(() => {
     INVITADO.sesiones = [s].concat((INVITADO.sesiones || []).filter(x => x.id !== s.id)).sort((a, b) => a.fecha < b.fecha ? 1 : -1);
-    guardarInv(); guardarBorrador(null); IB = null; toast("Entreno guardado 💪"); go("inicio");
+    guardarInv(); guardarBorrador(null); IB = null; toast(semNueva ? "Entreno guardado y añadido a tu semana 💪" : "Entreno guardado 💪"); go("inicio");
   }).catch(() => { btn.disabled = false; });
 }
 
@@ -1278,6 +1297,8 @@ app.addEventListener("click", ev=>{
   if (t.id === "invSalir") { salirInvitado(); viewLogin(); return; }
   if (t.dataset.ses && INVITADO) { const x = (INVITADO.sesiones || []).find(z => z.id === t.dataset.ses); if (x) { guardarBorrador(nuevoBorrador(x)); go("inv-entreno"); } return; }
   if (t.dataset.empezar) { empezarDia(t.dataset.empezar); return; }
+  if (t.id === "ibComoDia" && IB) { IB.comoDia = IB.comoDia ? null : { nombre: "", dia: null }; ibRepinta(); if (IB.comoDia) { const n = document.getElementById("ib-dnom"); if (n) n.focus(); } return; }
+  if (t.dataset.ibwd && IB && IB.comoDia) { const k = +t.dataset.ibwd; IB.comoDia.dia = IB.comoDia.dia === k ? null : k; ibRepinta(); return; }
   if (t.id === "sbVolver") { SB = null; }
   if (t.dataset.sbdel != null) { SB.dias.splice(+t.dataset.sbdel, 1); if (!SB.dias.length) SB.dias.push(nuevoDiaSem()); sbRepinta(); return; }
   if (t.dataset.sbwd) { const [i, k] = t.dataset.sbwd.split(",").map(Number); SB.dias[i].dia = SB.dias[i].dia === k ? null : k; sbRepinta(); return; }
@@ -1370,6 +1391,7 @@ app.addEventListener("input", ev=>{
   if (SB && ev.target.dataset.sbe) { const [i, j] = ev.target.dataset.sbe.split(",").map(Number); SB.dias[i].ejercicios[j].nombre = ev.target.value; return; }
   if (IB && ev.target.dataset.ibn != null) { IB.ejercicios[+ev.target.dataset.ibn].nombre = ev.target.value; guardarBorrador(IB); return; }
   if (IB && ev.target.dataset.ibs) { const [i, j, c] = ev.target.dataset.ibs.split(","); IB.ejercicios[+i].series[+j][c] = ev.target.value; guardarBorrador(IB); return; }
+  if (IB && IB.comoDia && ev.target.id === "ib-dnom") { IB.comoDia.nombre = ev.target.value; guardarBorrador(IB); return; }
   if (IB && ev.target.id === "ib-fecha") { IB.fecha = ev.target.value; guardarBorrador(IB); return; }
   if (ev.target.type==="range") ev.target.nextElementSibling.textContent = ev.target.value;
   if (ev.target.dataset.n){ const d = nutriDatos(); d[ev.target.dataset.n] = ev.target.dataset.n === "act" ? +ev.target.value : ev.target.value.trim(); nutriGuardar(d); nutriActualizar(); } });
