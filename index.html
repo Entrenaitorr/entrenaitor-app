@@ -846,6 +846,24 @@ function viewInvPin(msg, wa){
   </div>`;
   if (wa) setTimeout(() => { const p = document.getElementById("pin-pin"); if (p) p.focus(); }, 50);
 }
+// Antes de crear la cuenta: "¿Es correcto tu WhatsApp?" para evitar cuentas perdidas por una errata
+const waBonito = w => { const d = String(w).replace(/\D/g, "").replace(/^(0034|34)(?=\d{9}$)/, ""); return d.length === 9 ? d.replace(/(\d{3})(\d{3})(\d{3})/, "$1 $2 $3") : w; };
+function confirmarWa(nom, wa, pin){
+  const fondo = document.createElement("div");
+  fondo.className = "sheet-bg"; fondo.id = "waConf";
+  fondo.innerHTML = `<div class="sheet" role="dialog" aria-modal="true" aria-label="Confirma tu WhatsApp"><div class="grab"></div>
+    <h3>¿Es correcto tu WhatsApp?</h3>
+    <div style="font:700 34px 'Barlow Condensed',sans-serif;text-align:center;letter-spacing:.04em;margin:6px 0 4px">${esc(waBonito(wa))}</div>
+    <p class="mut small" style="text-align:center;line-height:1.5;margin:0 0 14px">Con este número y tu PIN podrás entrar en tu cuenta desde cualquier móvil.</p>
+    <button class="btn" id="waSi">Sí, es correcto</button>
+    <button class="onb-skip" id="waNo" style="margin-bottom:6px">Corregir</button></div>`;
+  document.body.appendChild(fondo);
+  const cerrar = () => fondo.remove();
+  fondo.addEventListener("click", ev => {
+    if (ev.target === fondo || ev.target.id === "waNo") { cerrar(); const i = document.getElementById("inv-wa"); if (i) { i.focus(); i.select(); } }
+    if (ev.target.id === "waSi") { cerrar(); const b = document.getElementById("invCrear"); b.dataset.ok = "1"; b.click(); }
+  });
+}
 function okInvitado(r, cod){ const g = { token: r.token, nombre: r.nombre, codigo: cod, sesiones: r.sesiones || [] }; INVITADO = g; guardarInv(); store.del(); document.body.classList.remove("onb"); entrarInvitado(g); }
 // Cuentas antiguas sin PIN: se le pide que elija uno una vez
 function avisoPin(){ return INVITADO && INVITADO.sinPin ? `<div class="card" style="border-color:#11484a;background:#0a2628;margin-top:12px"><b>Protege tu cuenta</b><p class="mut small" style="margin:4px 0 10px;line-height:1.5">Elige un PIN de 4 cifras para poder entrar desde otro móvil sin perder tus entrenos.</p><div style="display:flex;gap:8px"><input class="txt pin" id="nuevo-pin" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="••••" style="flex:1"><button class="btn" id="guardarPin" style="width:auto;margin:0;padding:0 18px">Guardar</button></div></div>` : ""; }
@@ -1095,6 +1113,7 @@ app.addEventListener("click", ev=>{
     if (wa.replace(/\D/g, "").length < 9) return viewInvAlta("Escribe tu número de WhatsApp.");
     const pin = document.getElementById("inv-pin").value.trim();
     if (!/^\d{4}$/.test(pin)) return viewInvAlta("Elige un PIN de 4 cifras.");
+    if (t.dataset.ok !== "1") { confirmarWa(nom, wa, pin); return; }
     const cod = CODE; t.disabled = true;
     api("invAlta", cod, nom, wa, pin).then(r => { okInvitado(r, cod); toast("¡Bienvenido/a, " + r.nombre.split(" ")[0] + "!"); })
       .catch(e => { if (e.message === "EXISTE") viewInvPin("Este WhatsApp ya tiene una cuenta. Escribe tu PIN para entrar en ella.", wa);
