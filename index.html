@@ -195,6 +195,20 @@
   .ix{width:34px;height:34px;border-radius:10px;border:1px solid var(--line);background:var(--card2);color:var(--mut);font-size:16px;cursor:pointer;padding:0}
   .ihead{display:grid;grid-template-columns:34px 1fr 1fr 34px;gap:8px;margin-top:10px;color:var(--mut);font-size:12px;text-align:center}
   .iadd{border:1px dashed #2b3a41;background:none;color:var(--acc-txt);border-radius:10px;padding:9px 12px;font:600 13.5px Inter;cursor:pointer;margin-top:10px}
+  .wk{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;margin:12px 0 0}
+  .wk-d{display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 0;border-radius:12px;background:var(--card);border:1px solid var(--line);color:var(--mut);font:700 15px "Barlow Condensed",sans-serif}
+  .wk-d i{font-style:normal;font-size:12px;height:14px;line-height:14px}
+  .wk-d.con{color:var(--txt)} .wk-d.con i{color:var(--acc-txt)}
+  .wk-d.ok{background:#173322;border-color:#1f4a30;color:#5fd38d} .wk-d.ok i{color:#5fd38d}
+  .wk-d.hoy{box-shadow:inset 0 0 0 2px var(--acc-txt)}
+  .wds{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;margin:10px 0 4px}
+  .wd{height:36px;border-radius:10px;border:1px solid var(--line);background:var(--card2);color:var(--mut);font:700 15px "Barlow Condensed",sans-serif;cursor:pointer;padding:0}
+  .wd.on{background:var(--acc);border-color:var(--acc);color:#fff}
+  .sbe{display:grid;grid-template-columns:minmax(0,1fr) auto 34px;gap:8px;align-items:center;margin-top:8px}
+  .stp{display:flex;align-items:center;gap:4px}
+  .stp span{min-width:44px;text-align:center;font:700 18px "Barlow Condensed",sans-serif;line-height:1}
+  .stp span small{display:block;font:500 10px Inter;color:var(--mut)}
+  .ult{margin-top:8px;font-size:12.5px;color:var(--mut)} .ult b{color:#a9e2e3;font-weight:600}
   .txt.pin{letter-spacing:.5em;text-align:center;font-size:20px}
   .inv-check{display:flex;gap:10px;align-items:flex-start;font-size:12.5px;line-height:1.5;color:var(--mut);margin-top:14px}
   .refresco{position:fixed;top:calc(10px + env(safe-area-inset-top));right:12px;z-index:30;display:flex;align-items:center;gap:7px;background:#121a1d;border:1px solid var(--line);color:var(--mut);font-size:12px;padding:6px 11px;border-radius:999px;opacity:0;transform:translateY(-6px);transition:opacity .2s,transform .2s;pointer-events:none}
@@ -893,6 +907,7 @@ function entrarInvitado(g){
   D = { invitado: true, cliente: g.nombre, semanas: [], dias: [] };
   route();
   api("invEntrar", CODE).then(r => { if (!INVITADO) return; INVITADO.nombre = r.nombre; INVITADO.sinPin = !!r.sinPin; INVITADO.tieneEmail = r.tieneEmail !== false;
+      if (r.semana !== undefined && !cola().some(it => it.fn === "invGuardarSemana" && it.code === CODE)) INVITADO.semana = r.semana;
       if (r.token && r.token !== INVITADO.token) { INVITADO.token = r.token; CODE = r.token; } INVITADO.sesiones = mezclarSesiones(r.sesiones); guardarInv(); D.cliente = r.nombre;
       if (!/^#inv-/.test(location.hash)) route(); vaciarCola(); })
     .catch(e => { if (!e.red) { const cod = g.codigo; salirInvitado(); CODE = cod; viewInvPin(e.message); } });
@@ -908,6 +923,7 @@ const fDia = iso => { const d = new Date(iso + "T12:00:00"); return { n: d.getDa
 function routeInv(h){
   tabbarUI();
   if (h === "inv-entreno") return viewInvEntreno();
+  if (h === "inv-semana") return viewInvSemana();
   if (h === "progreso" || h === "cuerpo" || h === "checkin") return viewInvProgreso();
   if (h === "nutricion") return viewNutri();
   viewInvHome();
@@ -918,12 +934,13 @@ function viewInvHome(){
   <h1>Hola, ${esc(INVITADO.nombre.split(" ")[0])} 👋</h1>
   ${avisoPin()}
   ${installHTML()}
-  <button class="btn" data-go="inv-entreno" style="margin-top:14px">${borr ? "Seguir con el entreno empezado" : "Apuntar un entreno"}</button>`;
+  ${borr ? `<button class="btn" data-go="inv-entreno" style="margin-top:14px">Seguir con el entreno empezado${borr.dia ? " (" + esc(borr.dia) + ")" : ""}</button>` : ""}`;
+  h += bloqueSemana(!!borr);
   if (ses.length) {
     h += `<div class="mut small" style="margin:18px 0 0">Tus entrenos</div>`;
     ses.slice(0, 30).forEach(x => { const f = fDia(x.fecha), nS = x.ejercicios.reduce((a, e) => a + e.series.length, 0);
-      h += `<button class="ses" data-ses="${esc(x.id)}"><span class="d">${f.n}<small>${f.m}</small></span><span class="t"><b>${esc(x.ejercicios.map(e => e.nombre).join(", "))}</b><small>${x.ejercicios.length} ejercicios · ${nS} series</small></span></button>`; });
-  } else h += `<div class="card" style="margin-top:14px"><b>Empieza por tu próximo entreno</b><p class="mut small" style="margin:6px 0 0;line-height:1.5">Apunta tus ejercicios con sus series, repeticiones y kilos. Aquí tendrás tu historial para saber qué hiciste la última vez.</p></div>`;
+      h += `<button class="ses" data-ses="${esc(x.id)}"><span class="d">${f.n}<small>${f.m}</small></span><span class="t"><b>${esc(x.dia ? x.dia + " · " : "")}${esc(x.ejercicios.map(e => e.nombre).join(", "))}</b><small>${nEj(x.ejercicios.length)} · ${nSe(nS)}</small></span></button>`; });
+  }
   h += `<div class="mut small" style="margin:22px 0 0">Con Aitor como entrenador</div>`;
   h += bloqueado("Tu rutina, hecha para ti", "Aitor te programa cada semana: ejercicios, series, repeticiones y RIR adaptados a ti, y los ajusta según cómo progresas.",
     `<div class="card" style="margin:0"><b style="font:700 20px 'Barlow Condensed'">Día 1 · Torso</b><div class="mut small">6 ejercicios · ~55 min</div><div style="margin-top:8px;line-height:1.9;font-size:14px">Press banca · 4×6-8 · RIR 2<br>Remo con barra · 4×8-10 · RIR 2<br>Press militar · 3×8-10 · RIR 1</div></div>`);
@@ -939,25 +956,106 @@ function viewInvProgreso(){
   ${bloqueado("Tu fuerza, semana a semana", "Con Aitor verás cómo sube tu fuerza estimada en cada ejercicio, tus mejores marcas y cuánto has mejorado desde el primer día.", fake)}
   ${bloqueado("Tu cuerpo, bajo control", "Check-in semanal con tu peso, % de grasa, masa muscular y más, con gráficas de tu evolución.", `<div class="mets" style="margin:0"><div class="met"><small>Peso</small><b>72,4<u>kg</u></b><i>−2,1 kg</i></div><div class="met"><small>Grasa</small><b>16,8<u>%</u></b><i>−1,9 %</i></div></div>`)}`;
 }
+/* --- "Mi semana" del invitado: sus días con día de la semana y ejercicios; cada entreno parte de lo que hizo la última vez --- */
+const DIAS_L = ["L", "M", "X", "J", "V", "S", "D"], DIAS_N = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
+const diaHoy = () => ((new Date().getDay() + 6) % 7) + 1;   // 1 = lunes … 7 = domingo
+const semanaInv = () => (INVITADO && INVITADO.semana && Array.isArray(INVITADO.semana.dias)) ? INVITADO.semana : { dias: [] };
+const normEj = n => String(n || "").trim().toLowerCase();
+const sesionesEstaSemana = () => ((INVITADO && INVITADO.sesiones) || []).filter(x => lunesISO(x.fecha) === lunesISO(hoyISO()));
+const hechoDia = d => sesionesEstaSemana().some(x => x.diaId === d.id);
+function rachaSemanas(){
+  const lunes = new Set(((INVITADO && INVITADO.sesiones) || []).map(x => lunesISO(x.fecha)));
+  const d = new Date(lunesISO(hoyISO()) + "T12:00:00"); let n = 0;
+  if (!lunes.has(lunesISO(hoyISO()))) d.setDate(d.getDate() - 7);   // si esta semana aún no ha entrenado, la racha sigue viva
+  while (lunes.has(lunesISO(d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0")))) { n++; d.setDate(d.getDate() - 7); }
+  return n;
+}
+function ultimaVez(nombre){
+  const k = normEj(nombre);
+  for (const x of ((INVITADO && INVITADO.sesiones) || [])) { const e = x.ejercicios.find(z => normEj(z.nombre) === k); if (e) return e.series; }
+  return null;
+}
+const nEj = n => n + (n === 1 ? " ejercicio" : " ejercicios"), nSe = n => n + (n === 1 ? " serie" : " series");
+const etqDia = (d, i) => d.dia ? DIAS_L[d.dia - 1] : String.fromCharCode(65 + i);
+function bloqueSemana(hayBorrador){
+  const sem = semanaInv();
+  if (!sem.dias.length) return `<div class="card" style="margin-top:14px;border-color:#11484a;background:#0a2628"><b style="font:700 21px 'Barlow Condensed',sans-serif">Monta tu semana</b>
+    <p class="mut small" style="margin:6px 0 12px;line-height:1.5;color:#a9e2e3">Crea tus días de entreno (por ejemplo, "Lunes – Torso") con sus ejercicios. Así cada día te aparecerá todo preparado, con lo que hiciste la última vez.</p>
+    <button class="btn" data-go="inv-semana" style="margin:0">Crear mi semana</button></div>
+    <button class="btn ghost" data-go="inv-entreno" style="margin-top:10px">Apuntar un entreno suelto</button>`;
+  const hoy = diaHoy(), toca = sem.dias.find(d => d.dia === hoy && !hechoDia(d)), racha = rachaSemanas();
+  let h = "";
+  if (toca && !hayBorrador) h += `<button class="cta-checkin" data-empezar="${esc(toca.id)}">${ICO_PESA_MINI}<span><b>Hoy toca: ${esc(toca.nombre)}</b><small>${nEj(toca.ejercicios.length)} · Toca para empezar</small></span></button>`;
+  if (racha >= 1) h += `<div class="free" style="margin-top:10px">🔥 <b>${racha} ${racha === 1 ? "semana" : "semanas seguidas"}</b> entrenando. ¡Sigue así!</div>`;
+  // tira de la semana
+  h += `<div class="wk">${DIAS_L.map((l, i) => { const dd = sem.dias.filter(d => d.dia === i + 1), hecho = dd.length && dd.every(hechoDia);
+    return `<div class="wk-d ${i + 1 === hoy ? "hoy" : ""} ${dd.length ? "con" : ""} ${hecho ? "ok" : ""}"><span>${l}</span><i>${hecho ? "✓" : dd.length ? "•" : ""}</i></div>`; }).join("")}</div>`;
+  h += `<div style="display:flex;justify-content:space-between;align-items:center;margin:16px 0 0"><span class="mut small">Tu semana</span><button class="link" data-go="inv-semana" style="margin:0;padding:0">Editar mi semana</button></div>`;
+  sem.dias.forEach((d, i) => { const ok = hechoDia(d);
+    h += `<button class="ses" data-empezar="${esc(d.id)}"><span class="d" style="${ok ? "background:#173322;color:#5fd38d" : ""}">${ok ? "✓" : etqDia(d, i)}<small>${d.dia ? DIAS_N[d.dia - 1].slice(0, 3) : "día"}</small></span><span class="t"><b>${esc(d.nombre)}</b><small>${nEj(d.ejercicios.length)}${ok ? " · Hecho esta semana" : ""}</small></span>${CHEV.replace('M6 9l6 6 6-6', 'M9 6l6 6-6 6')}</button>`; });
+  h += `<button class="btn ghost" data-go="inv-entreno" style="margin-top:6px">Apuntar un entreno suelto</button>`;
+  return h;
+}
+function empezarDia(id){
+  const actual = leerBorrador();
+  if (actual && actual.ejercicios.some(e => e.nombre || e.series.some(x => x.r || x.k))) { toast("Tienes un entreno empezado: termínalo o descártalo primero"); go("inv-entreno"); return; }
+  const d = semanaInv().dias.find(x => x.id === id); if (!d) return;
+  guardarBorrador({ id: "s" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), fecha: hoyISO(), diaId: d.id, dia: d.nombre, editando: false,
+    ejercicios: d.ejercicios.map(e => { const prev = ultimaVez(e.nombre) || []; const n = e.series || prev.length || 3;
+      return { nombre: e.nombre, prev: prev, series: Array.from({ length: n }, () => ({ r: "", k: "" })) }; }) });
+  go("inv-entreno");
+}
+/* Editor de la semana */
+let SB = null;
+const nuevoDiaSem = () => ({ id: "d" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), nombre: "", dia: null, ejercicios: [{ nombre: "", series: 3 }] });
+function viewInvSemana(){
+  if (!SB) { SB = JSON.parse(JSON.stringify(semanaInv())); if (!SB.dias.length) SB.dias.push(nuevoDiaSem()); }
+  const usados = [...new Set(((INVITADO && INVITADO.sesiones) || []).flatMap(x => x.ejercicios.map(e => e.nombre)).concat(SB.dias.flatMap(d => d.ejercicios.map(e => e.nombre))).filter(Boolean))];
+  let h = `<button class="back" data-go="inicio" id="sbVolver">← Inicio</button>
+  <h1>Mi semana</h1>
+  <p class="mut small" style="line-height:1.5;margin:6px 0 4px">Crea los días que entrenas con sus ejercicios. Si quieres, elige qué día de la semana te toca cada uno.</p>
+  <datalist id="ib-ejs">${usados.map(n => `<option value="${esc(n)}">`).join("")}</datalist>`;
+  SB.dias.forEach((d, i) => {
+    h += `<div class="iex"><div class="iex-top"><input class="txt" data-sbn="${i}" value="${esc(d.nombre)}" placeholder="Nombre del día (ej. Torso)" autocomplete="off" maxlength="40"><button class="ix" data-sbdel="${i}" aria-label="Quitar día">✕</button></div>
+      <div class="wds" role="radiogroup" aria-label="Día de la semana">${DIAS_L.map((l, k) => `<button class="wd ${d.dia === k + 1 ? "on" : ""}" data-sbwd="${i},${k + 1}" aria-label="${DIAS_N[k]}" aria-checked="${d.dia === k + 1}" role="radio">${l}</button>`).join("")}</div>
+      ${d.ejercicios.map((e, j) => `<div class="sbe"><input class="txt" list="ib-ejs" data-sbe="${i},${j}" value="${esc(e.nombre)}" placeholder="Ejercicio" autocomplete="off" maxlength="80">
+        <div class="stp"><button class="ix" data-sbs="${i},${j},-1" aria-label="Menos series">−</button><span>${e.series}<small>series</small></span><button class="ix" data-sbs="${i},${j},1" aria-label="Más series">+</button></div>
+        <button class="ix" data-sbedel="${i},${j}" aria-label="Quitar ejercicio">✕</button></div>`).join("")}
+      <button class="iadd" data-sbadd="${i}">+ Añadir ejercicio</button></div>`; });
+  if (SB.dias.length < 7) h += `<button class="iadd" id="sbDia" style="width:100%">+ Añadir otro día</button>`;
+  h += `<button class="btn" id="sbGuardar">Guardar mi semana</button>`;
+  app.innerHTML = h;
+}
+function sbRepinta(foco){ const y = window.scrollY; viewInvSemana(); window.scrollTo(0, y); if (foco) { const el = app.querySelector(foco); if (el) el.focus(); } }
+function sbGuardar(btn){
+  const dias = SB.dias.map((d, i) => ({ id: d.id, nombre: d.nombre.trim() || (d.dia ? DIAS_N[d.dia - 1] : "Día " + String.fromCharCode(65 + i)), dia: d.dia,
+    ejercicios: d.ejercicios.map(e => ({ nombre: e.nombre.trim(), series: e.series })).filter(e => e.nombre) }));
+  const vacio = dias.findIndex(d => !d.ejercicios.length);
+  if (vacio >= 0) { toast(`Añade al menos un ejercicio a "${dias[vacio].nombre}" o quita ese día`, true); return; }
+  const sem = { dias }; btn.disabled = true;
+  guardar("invGuardarSemana", sem).then(() => { INVITADO.semana = sem; guardarInv(); SB = null; toast("Semana guardada 💪"); go("inicio"); }).catch(() => { btn.disabled = false; });
+}
+
 /* --- Editor de entreno del invitado --- */
 function leerBorrador(){ try { return JSON.parse(localStorage.getItem(BORR)) || null; } catch(e){ return null; } }
 function guardarBorrador(b){ try { if (b) localStorage.setItem(BORR, JSON.stringify(b)); else localStorage.removeItem(BORR); } catch(e){} }
 let IB = null;
-function nuevoBorrador(base){ return { id: base ? base.id : "s" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), fecha: base ? base.fecha : hoyISO(), editando: !!base,
+function nuevoBorrador(base){ return { id: base ? base.id : "s" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), fecha: base ? base.fecha : hoyISO(), editando: !!base, diaId: base ? base.diaId || "" : "", dia: base ? base.dia || "" : "",
   ejercicios: base ? base.ejercicios.map(e => ({ nombre: e.nombre, series: e.series.map(x => ({ r: x[0], k: x[1] })) })) : [{ nombre: "", series: [{ r: "", k: "" }] }] }; }
 function viewInvEntreno(){
   IB = leerBorrador() || nuevoBorrador(); guardarBorrador(IB);
-  const usados = [...new Set(((INVITADO && INVITADO.sesiones) || []).flatMap(x => x.ejercicios.map(e => e.nombre)))];
+  const usados = [...new Set(((INVITADO && INVITADO.sesiones) || []).flatMap(x => x.ejercicios.map(e => e.nombre)).concat(semanaInv().dias.flatMap(d => d.ejercicios.map(e => e.nombre))))];
   const ult = (INVITADO.sesiones || [])[0];
   let h = `<button class="back" data-go="inicio">← Inicio</button>
-  <h1>${IB.editando ? "Editar entreno" : "Nuevo entreno"}</h1>
+  <h1>${IB.editando ? "Editar entreno" : (IB.dia ? esc(IB.dia) : "Nuevo entreno")}</h1>
   <label class="lb" for="ib-fecha">Fecha</label><input class="txt" type="date" id="ib-fecha" value="${IB.fecha}" max="${hoyISO()}">
-  ${!IB.editando && ult && IB.ejercicios.length === 1 && !IB.ejercicios[0].nombre ? `<button class="iadd" id="ibCopiar" style="width:100%">Repetir mi último entreno (${esc(ult.ejercicios.map(e => e.nombre).slice(0, 2).join(", "))}${ult.ejercicios.length > 2 ? "…" : ""})</button>` : ""}
+  ${!IB.editando && !IB.diaId && ult && IB.ejercicios.length === 1 && !IB.ejercicios[0].nombre ? `<button class="iadd" id="ibCopiar" style="width:100%">Repetir mi último entreno (${esc(ult.ejercicios.map(e => e.nombre).slice(0, 2).join(", "))}${ult.ejercicios.length > 2 ? "…" : ""})</button>` : ""}
   <datalist id="ib-ejs">${usados.map(n => `<option value="${esc(n)}">`).join("")}</datalist>`;
   IB.ejercicios.forEach((e, i) => {
     h += `<div class="iex"><div class="iex-top"><input class="txt" list="ib-ejs" data-ibn="${i}" value="${esc(e.nombre)}" placeholder="Ejercicio (ej. Press banca)" autocomplete="off"><button class="ix" data-ibdel="${i}" aria-label="Quitar ejercicio">✕</button></div>
+      ${e.prev && e.prev.length ? `<div class="ult">La última vez: <b>${e.prev.map(p => esc(p[0]) + (p[1] !== "" ? "×" + esc(String(p[1]).replace(".", ",")) : "")).join(" · ")}</b></div>` : ""}
       <div class="ihead"><span>Serie</span><span>Reps</span><span>Kg</span><span></span></div>
-      ${e.series.map((x, j) => `<div class="iset"><span>${j + 1}</span><input class="txt" inputmode="numeric" data-ibs="${i},${j},r" value="${esc(x.r)}" placeholder="0"><input class="txt" inputmode="decimal" data-ibs="${i},${j},k" value="${esc(x.k)}" placeholder="kg"><button class="ix" data-ibquita="${i},${j}" aria-label="Quitar serie">−</button></div>`).join("")}
+      ${e.series.map((x, j) => { const p = (e.prev || [])[j] || []; return `<div class="iset"><span>${j + 1}</span><input class="txt" inputmode="numeric" data-ibs="${i},${j},r" value="${esc(x.r)}" placeholder="${esc(p[0] || "0")}"><input class="txt" inputmode="decimal" data-ibs="${i},${j},k" value="${esc(x.k)}" placeholder="${esc(p[1] ? String(p[1]).replace(".", ",") : "kg")}"><button class="ix" data-ibquita="${i},${j}" aria-label="Quitar serie">−</button></div>`; }).join("")}
       <button class="iadd" data-ibset="${i}">+ Añadir serie</button></div>`; });
   h += `<button class="iadd" id="ibEj" style="width:100%">+ Añadir ejercicio</button>
   <button class="btn" id="ibGuardar">Guardar entreno</button>
@@ -969,7 +1067,7 @@ function ibGuardar(btn){
   const ej = IB.ejercicios.map(e => ({ nombre: e.nombre.trim(), series: e.series.filter(x => String(x.r).trim() !== "").map(x => [String(x.r).trim(), String(x.k).trim().replace(",", ".")]) }))
     .filter(e => e.nombre && e.series.length);
   if (!ej.length) { toast("Apunta al menos un ejercicio con una serie", true); return; }
-  const s = { id: IB.id, fecha: document.getElementById("ib-fecha").value || hoyISO(), ejercicios: ej };
+  const s = { id: IB.id, fecha: document.getElementById("ib-fecha").value || hoyISO(), diaId: IB.diaId || "", dia: IB.dia || "", ejercicios: ej };
   btn.disabled = true;
   guardar("invGuardar", s).then(() => {
     INVITADO.sesiones = [s].concat((INVITADO.sesiones || []).filter(x => x.id !== s.id)).sort((a, b) => a.fecha < b.fecha ? 1 : -1);
@@ -1179,6 +1277,15 @@ app.addEventListener("click", ev=>{
   if (t.id === "invVolver") { document.body.classList.remove("onb"); CODE = ""; store.del(); viewLogin(); return; }
   if (t.id === "invSalir") { salirInvitado(); viewLogin(); return; }
   if (t.dataset.ses && INVITADO) { const x = (INVITADO.sesiones || []).find(z => z.id === t.dataset.ses); if (x) { guardarBorrador(nuevoBorrador(x)); go("inv-entreno"); } return; }
+  if (t.dataset.empezar) { empezarDia(t.dataset.empezar); return; }
+  if (t.id === "sbVolver") { SB = null; }
+  if (t.dataset.sbdel != null) { SB.dias.splice(+t.dataset.sbdel, 1); if (!SB.dias.length) SB.dias.push(nuevoDiaSem()); sbRepinta(); return; }
+  if (t.dataset.sbwd) { const [i, k] = t.dataset.sbwd.split(",").map(Number); SB.dias[i].dia = SB.dias[i].dia === k ? null : k; sbRepinta(); return; }
+  if (t.dataset.sbs) { const [i, j, d] = t.dataset.sbs.split(",").map(Number), e = SB.dias[i].ejercicios[j]; e.series = Math.max(1, Math.min(10, e.series + d)); sbRepinta(); return; }
+  if (t.dataset.sbedel) { const [i, j] = t.dataset.sbedel.split(",").map(Number); SB.dias[i].ejercicios.splice(j, 1); if (!SB.dias[i].ejercicios.length) SB.dias[i].ejercicios.push({ nombre: "", series: 3 }); sbRepinta(); return; }
+  if (t.dataset.sbadd != null) { const i = +t.dataset.sbadd; SB.dias[i].ejercicios.push({ nombre: "", series: 3 }); sbRepinta(`[data-sbe="${i},${SB.dias[i].ejercicios.length - 1}"]`); return; }
+  if (t.id === "sbDia") { SB.dias.push(nuevoDiaSem()); sbRepinta(`[data-sbn="${SB.dias.length - 1}"]`); return; }
+  if (t.id === "sbGuardar") { sbGuardar(t); return; }
   if (t.id === "ibCopiar") { const u = INVITADO.sesiones[0]; IB = nuevoBorrador(u); IB.id = "s" + Date.now().toString(36); IB.fecha = hoyISO(); IB.editando = false; ibRepinta(); return; }
   if (t.id === "ibEj") { IB.ejercicios.push({ nombre: "", series: [{ r: "", k: "" }] }); ibRepinta(); const ins = app.querySelectorAll("[data-ibn]"); ins[ins.length - 1].focus(); return; }
   if (t.dataset.ibdel != null) { IB.ejercicios.splice(+t.dataset.ibdel, 1); if (!IB.ejercicios.length) IB.ejercicios.push({ nombre: "", series: [{ r: "", k: "" }] }); ibRepinta(); return; }
@@ -1259,6 +1366,8 @@ function viewDayKeep(n){ const y = window.scrollY; viewDay(n); window.scrollTo(0
 
 app.addEventListener("keydown", ev=>{ if (ev.key === "Escape") abrirSheet(false); if (ev.key==="Enter" && ev.target.id==="cod") document.getElementById("entrar").click(); });
 app.addEventListener("input", ev=>{
+  if (SB && ev.target.dataset.sbn != null) { SB.dias[+ev.target.dataset.sbn].nombre = ev.target.value; return; }
+  if (SB && ev.target.dataset.sbe) { const [i, j] = ev.target.dataset.sbe.split(",").map(Number); SB.dias[i].ejercicios[j].nombre = ev.target.value; return; }
   if (IB && ev.target.dataset.ibn != null) { IB.ejercicios[+ev.target.dataset.ibn].nombre = ev.target.value; guardarBorrador(IB); return; }
   if (IB && ev.target.dataset.ibs) { const [i, j, c] = ev.target.dataset.ibs.split(","); IB.ejercicios[+i].series[+j][c] = ev.target.value; guardarBorrador(IB); return; }
   if (IB && ev.target.id === "ib-fecha") { IB.fecha = ev.target.value; guardarBorrador(IB); return; }
