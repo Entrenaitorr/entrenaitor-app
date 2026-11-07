@@ -673,9 +673,9 @@ function abrirCambio(ci, o, ii){
   const ops = opcionesCambio(items, ii, op.items), [nm] = nomPartes(items[ii].n), el = document.getElementById("dzSheet");
   DIE_CAMBIO = { ci: ci, o: o, ops: ops };
   el.innerHTML = `<div class="sheet" role="dialog" aria-modal="true" aria-label="Cambiar alimento"><div class="grab"></div><h3>Cambiar ${esc(nm)}</h3>
-    <div class="mut small" style="margin:-4px 4px 10px">${cantTxt(items[ii].n, items[ii].g)} · Comida ${c.n}</div>
+    <div class="mut small" style="margin:-4px 4px 10px;line-height:1.45">${cantTxt(items[ii].n, items[ii].g)} · Comida ${c.n}<br>Al elegir, la app reajusta sola el resto de la comida. Tú solo pesa lo que te ponga.</div>
     <div class="sheet-list">${ops.length ? ops.map((x, i) => { const [a, b] = nomPartes(x.n);
-      return `<button class="sheet-it" data-dzpick="${i}"><span class="it-t"><b>${esc(a)}</b>${b ? `<small>${esc(b)}</small>` : ""}${x.cambios.map(z => `<small class="dz-aj">Ajusta ${esc(nomPartes(z.n)[0].toLowerCase())}: ${n0(z.de)} → ${n0(z.a)} g</small>`).join("")}</span>
+      return `<button class="sheet-it" data-dzpick="${i}"><span class="it-t"><b>${esc(a)}</b>${b ? `<small>${esc(b)}</small>` : ""}${x.cambios.map(z => `<small class="dz-aj">+ ${esc(nomPartes(z.n)[0].toLowerCase())} pasa a ${n0(z.a)} g (antes ${n0(z.de)} g)</small>`).join("")}</span>
         <span class="it-v"><strong>${cantTxt(x.n, x.g)}</strong><i>${Math.abs(x.dk) < 8 ? "= kcal" : (x.dk > 0 ? "+" : "") + n0(x.dk) + " kcal"}</i></span></button>`; }).join("")
       : `<div class="card" style="margin:4px;line-height:1.5">No hay ningún cambio que cuadre con esta comida.<a class="wa" href="${esc(waLink(`Hola Aitor, soy ${nombreCliente()}. ¿Por qué podría cambiar ${nm} en la comida ${c.n}?`))}" target="_blank" rel="noopener" style="margin-top:10px">${WA_ICON}Preguntar a Aitor</a></div>`}</div></div>`;
   el.hidden = false; document.body.style.overflow = "hidden";
