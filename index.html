@@ -222,7 +222,16 @@
   .dz-it.cam .dz-n b{color:var(--acc-txt)}
   .dz-n{flex:1;min-width:0} .dz-n b{display:block;font:600 14.5px Inter;line-height:1.3} .dz-n small{display:block;color:var(--mut);font-size:11.5px}
   .dz-g{flex:0 0 auto;font:700 16px "Barlow Condensed",sans-serif;text-align:right} .dz-g small{font:500 11px Inter;color:var(--mut)}
-  .dz-sw{flex:0 0 22px;color:var(--acc-txt);font-size:16px;text-align:center}
+  .dz-sw{flex:0 0 auto;font:600 12px Inter;color:var(--acc-txt);border:1px solid #11484a;background:#0a2628;border-radius:999px;padding:5px 10px}
+  .dz-sw.dz-lib{border:0;background:none;color:var(--mut);padding:5px 4px;min-width:0}
+  .dz-ico{flex:0 0 30px;height:30px;border-radius:9px;background:var(--card2);display:grid;place-items:center;font-size:16px}
+  .dz-sub{display:block;color:var(--acc-txt);font:600 11.5px Inter;letter-spacing:.06em;text-transform:uppercase;margin-bottom:2px}
+  .dz-now{box-shadow:0 0 0 1px #11484a}
+  .dz-c{scroll-margin-top:12px}
+  .dz-chips{display:flex;gap:6px;overflow-x:auto;margin:10px -2px 2px;padding:2px;scrollbar-width:none}
+  .dz-chips::-webkit-scrollbar{display:none}
+  .dz-chips button{flex:0 0 auto;border:1px solid var(--line);background:var(--card);color:var(--txt);border-radius:999px;padding:7px 12px;font:600 13px Inter;cursor:pointer;white-space:nowrap}
+  .dz-chips button.on{background:var(--acc);border-color:var(--acc);color:#fff}
   .dz-tot{border-top:1px solid var(--line);padding-top:8px;margin-top:2px;color:var(--mut);font-size:12.5px;text-align:right}
   .dz-desc{margin-top:8px;font-size:13px;line-height:1.5;background:var(--card2);border-radius:10px;padding:9px 11px}
   .sheet-it small.dz-aj{color:var(--acc-txt)}
@@ -588,6 +597,15 @@ function nutriActualizar(){ const r = document.getElementById("nres"); if (r) r.
    reajustan solos la grasa y el cereal de esa comida para que quede con los mismos macros.
    Los cambios solo se guardan en el móvil del cliente: el Sheets de Aitor no se toca. */
 const DKEY = "entrenaitor_dieta", DSEL = "entrenaitor_dieta_sel";
+const ICO_SG = { "Proteína magra": "🍗", "Proteína grasa": "🥩", "Lácteo": "🥛", "Leche": "🥛", "Cereal": "🍚", "Fruta": "🍎", "Verdura": "🥦", "Grasa": "🥑" };
+const ICO_NOM = [[/huevo|clara/i, "🥚"], [/merluza|at[uú]n|salm[oó]n|sardina|melva|bacalao|pescado|gamba/i, "🐟"], [/pollo|pavo/i, "🍗"],
+  [/jam[oó]n|lomo|embuchado|carne|ternera|cerdo|vacuno/i, "🥩"], [/queso|mozzarella|havarti|cheddar/i, "🧀"], [/leche|natilla|yogur|batido|mousse/i, "🥛"],
+  [/evolate|evohydro|prote[ií]na en polvo|whey|iso/i, "🥤"], [/pan |pan$|molde|brioche|tortilla|picos/i, "🍞"], [/pasta|macarr|espagu/i, "🍝"],
+  [/arroz/i, "🍚"], [/avena|muesli|corn|cereal|chocozero/i, "🥣"], [/patata|boniato/i, "🥔"], [/pl[aá]tano/i, "🍌"], [/manzana/i, "🍎"],
+  [/aceite/i, "🫒"], [/chocolate/i, "🍫"], [/cacahuete|nuez|nueces|pistacho|almendra/i, "🥜"], [/tomate/i, "🍅"], [/pimiento/i, "🫑"]];
+const icoAlim = (n, f) => { const m = ICO_NOM.find(([r]) => r.test(n)); return m ? m[1] : (f && ICO_SG[f.sg]) || "🍽️"; };
+// Comida que toca según la hora (reparte las comidas entre las 7:00 y las 22:00)
+function comidaAhora(n){ const h = new Date().getHours() + new Date().getMinutes() / 60; return Math.max(0, Math.min(n - 1, Math.floor((h - 7) / (15 / n)))); }
 const MAIN = { "Proteína magra": "p", "Proteína grasa": "p", "Lácteo": "p", "Cereal": "h", "Fruta": "h", "Grasa": "g", "Leche": "k" };
 let DIE = null, DIE_ERR = "", DIE_CAMBIO = null, DIE_CODE = "";
 const normN = s => String(s || "").trim().toLowerCase();
@@ -649,24 +667,26 @@ function pintarDieta(){
   let h = `<button class="back" data-go="inicio">← Volver</button><div class="brand"><h1>Mi dieta</h1><img src="icons/nutricion.svg" alt="" style="width:56px;height:56px"></div>`;
   if (!DIE) { app.innerHTML = h + (DIE_ERR ? `<div class="err-box">${esc(DIE_ERR)}</div>` : `<div class="card" style="text-align:center;padding:30px"><div class="spin"></div></div>`); return; }
   if (DIE.bloqueada || DIE.sinDieta || !(DIE.comidas || []).length) { app.innerHTML = h + `<div class="card" style="line-height:1.55">Aitor aún está preparando tu dieta. En cuanto la tenga lista te aparecerá aquí.</div>`; return; }
-  const s = selLeer(), tot = { k: 0, g: 0, p: 0, h: 0 };
+  const s = selLeer(), tot = { k: 0, g: 0, p: 0, h: 0 }, ahora = comidaAhora(DIE.comidas.length);
   let cuerpo = "";
   DIE.comidas.forEach((c, ci) => {
     const o = Math.min(s.op[ci] || 0, c.op.length - 1), op = c.op[o], items = s.items[ci + "_" + o] || op.items, mt = macrosDe(items);
     ["k", "g", "p", "h"].forEach(k => tot[k] += mt[k]);
     const mod = !!s.items[ci + "_" + o];
-    cuerpo += `<div class="card dz-c"><div class="dz-top"><h2>Comida ${c.n}</h2>${c.op.length > 1 ? `<div class="dz-seg">${c.op.map((x, i) => `<button class="${i === o ? "on" : ""}" data-dzop="${ci},${i}">Opción ${i + 1}</button>`).join("")}</div>` : ""}</div>
+    cuerpo += `<div class="card dz-c ${ci === ahora ? "dz-now" : ""}" id="dzc-${ci}"><div class="dz-top"><div>${c.nom ? `<small class="dz-sub">Comida ${c.n}${ci === ahora ? " · ahora" : ""}</small><h2>${esc(c.nom)}</h2>` : `${ci === ahora ? `<small class="dz-sub">Ahora</small>` : ""}<h2>Comida ${c.n}</h2>`}</div>${c.op.length > 1 ? `<div class="dz-seg">${c.op.map((x, i) => `<button class="${i === o ? "on" : ""}" data-dzop="${ci},${i}">Opción ${i + 1}</button>`).join("")}</div>` : ""}</div>
       ${items.map((it, ii) => { const f = bdF(it.n), [nm, mk] = nomPartes(it.n), puede = !LECTURA() && f && f.ok && MAIN[f.sg], cam = mod && op.items[ii] && (normN(op.items[ii].n) !== normN(it.n) || op.items[ii].g !== it.g);
-        return `<button class="dz-it ${cam ? "cam" : ""}" ${puede ? `data-dzit="${ci},${o},${ii}"` : "disabled"}><span class="dz-n"><b>${esc(nm)}</b>${mk ? `<small>${esc(mk)}</small>` : ""}</span><span class="dz-g">${cantTxt(it.n, it.g)}</span>${puede ? `<span class="dz-sw" aria-label="Cambiar">⇄</span>` : `<span class="dz-sw"></span>`}</button>`; }).join("")}
+        return `<button class="dz-it ${cam ? "cam" : ""}" ${puede ? `data-dzit="${ci},${o},${ii}"` : "disabled"}><span class="dz-ico" aria-hidden="true">${icoAlim(it.n, f)}</span><span class="dz-n"><b>${esc(nm)}</b>${mk ? `<small>${esc(mk)}</small>` : ""}</span><span class="dz-g">${cantTxt(it.n, it.g)}</span>${puede ? `<span class="dz-sw">Cambiar</span>` : `<span class="dz-sw dz-lib">${f && f.sg === "Verdura" ? "Libre" : ""}</span>`}</button>`; }).join("")}
       <div class="dz-tot">${n0(mt.k)} kcal · P ${n0(mt.p)} · H ${n0(mt.h)} · G ${n0(mt.g)}</div>
       ${op.desc ? `<div class="dz-desc">${esc(op.desc)}</div>` : ""}
       ${mod ? `<button class="link" data-dzreset="${ci},${o}" style="margin:6px 0 0">Volver a la comida original</button>` : ""}</div>`;
   });
   h += `<div class="dz-dia"><div><b>${n0(tot.k)}</b><small>kcal</small></div><div><b>${n0(tot.p)}</b><small>proteína</small></div><div><b>${n0(tot.h)}</b><small>hidratos</small></div><div><b>${n0(tot.g)}</b><small>grasa</small></div></div>
     ${DIE_ERR ? `<div class="mut small" style="margin:6px 0">${esc(DIE_ERR)}</div>` : ""}
-    ${LECTURA() ? "" : `<div class="mut small" style="margin:8px 0 2px;line-height:1.5">Toca un alimento con ⇄ para cambiarlo por otro. La app reajusta la comida para que siga cuadrando con tu plan.</div>`}
+    <div class="dz-chips">${DIE.comidas.map((c, ci) => `<button class="${ci === ahora ? "on" : ""}" data-dzir="${ci}">${esc(c.nom || "Comida " + c.n)}</button>`).join("")}</div>
+    ${LECTURA() ? "" : `<div class="mut small" style="margin:8px 0 2px;line-height:1.5">Pulsa <b>Cambiar</b> en un alimento para elegir otro. La app reajusta sola la comida para que siga cuadrando con tu plan.</div>`}
     ${cuerpo}<div class="dz-sheet sheet-bg" id="dzSheet" hidden></div>`;
   app.innerHTML = h;
+  if (pintarDieta.salto !== CODE && ahora > 0) { pintarDieta.salto = CODE; const el = document.getElementById("dzc-" + ahora); if (el) setTimeout(() => el.scrollIntoView({ behavior: "smooth", block: "start" }), 250); }
 }
 function abrirCambio(ci, o, ii){
   const s = selLeer(), c = DIE.comidas[ci], op = c.op[o], items = s.items[ci + "_" + o] || op.items;
@@ -684,6 +704,7 @@ function cerrarCambio(){ const el = document.getElementById("dzSheet"); if (el) 
 app.addEventListener("click", ev => {
   if (ev.target.id === "dzSheet") return cerrarCambio();
   const t = ev.target.closest("button"); if (!t) return;
+  if (t.dataset.dzir) { const el = document.getElementById("dzc-" + t.dataset.dzir); if (el) el.scrollIntoView({ behavior: "smooth", block: "start" }); return; }
   if (t.dataset.dzop) { const [ci, o] = t.dataset.dzop.split(",").map(Number), s = selLeer(); s.op[ci] = o; selGuardar(s); pintarDieta(); return; }
   if (t.dataset.dzit) { const [ci, o, ii] = t.dataset.dzit.split(",").map(Number); abrirCambio(ci, o, ii); return; }
   if (t.dataset.dzpick && DIE_CAMBIO) { const x = DIE_CAMBIO.ops[+t.dataset.dzpick], s = selLeer(); s.items[DIE_CAMBIO.ci + "_" + DIE_CAMBIO.o] = x.items; selGuardar(s);
