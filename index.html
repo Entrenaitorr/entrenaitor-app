@@ -236,6 +236,9 @@
   .dz-desc{margin-top:8px;font-size:13px;line-height:1.5;background:var(--card2);border-radius:10px;padding:9px 11px}
   .sheet-it small.dz-aj{color:var(--acc-txt)}
   .sheet-it .it-v i{display:block;font-style:normal;font-size:11.5px;color:var(--mut)}
+  .chips a.vid{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:999px;background:#0a2628;border:1px solid #11484a;color:var(--acc-txt);font:600 12px Inter;text-decoration:none}
+  .lb-ico{display:flex !important;align-items:center;gap:6px} .mico{flex:0 0 auto;color:var(--acc-txt)}
+  .met small.lb-ico .mico{width:15px;height:15px}
   .esc-b{margin-top:14px}
   .aviso-res{margin:0 0 10px;padding:9px 12px;border-radius:12px;background:#3a1416;border:1px solid #6b2226;color:#ffb4b4;font-size:13px;font-weight:600}
   .cl .av{position:relative} .dot-r{position:absolute;top:-2px;right:-2px;width:11px;height:11px;border-radius:50%;background:#ff4d4d;border:2px solid var(--card)}
@@ -810,6 +813,17 @@ const MET = [
   { k: "imc", t: "IMC", u: "", min: 10, max: 70 },
   { k: "visceral", t: "Grasa visceral", u: "", min: 1, max: 60 },
   { k: "agua", t: "Agua corporal", u: "%", min: 20, max: 80 }];
+// Iconos de las medidas (trazo, color de la marca)
+const SVGI = d => `<svg class="mico" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
+const ICO_MET = {
+  peso: SVGI('<rect x="3.5" y="3.5" width="17" height="17" rx="4"/><path d="M8.5 9.5a4.5 4.5 0 0 1 7 0"/><path d="M12 11.5l1.5-2.5"/>'),
+  cintura: SVGI('<rect x="2.5" y="8" width="19" height="8" rx="2"/><path d="M6.5 8v3M10.5 8v4.5M14.5 8v3M18.5 8v4.5"/>'),
+  grasa: SVGI('<path d="M12 3.5c3 3.6 6 7 6 10.3a6 6 0 0 1-12 0c0-3.3 3-6.7 6-10.3z"/><path d="M9.5 16.5l5-5M9.8 11.8h.01M14.2 16.2h.01"/>'),
+  musculo: SVGI('<path d="M6.5 6.5v11M17.5 6.5v11M3.5 9v6M20.5 9v6M6.5 12h11"/>'),
+  imc: SVGI('<circle cx="12" cy="5.5" r="2"/><path d="M12 8.5v6M8 10.5l4-1 4 1M10 21l2-6.5 2 6.5"/>'),
+  visceral: SVGI('<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r=".6"/>'),
+  agua: SVGI('<path d="M12 3.5c3 3.6 6 7 6 10.3a6 6 0 0 1-12 0c0-3.3 3-6.7 6-10.3z"/><path d="M9 14.5a3 3 0 0 0 3 3"/>')
+};
 const hoyISO = () => { const d = new Date(); return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0"); };
 const lunesISO = iso => { const d = new Date(iso + "T12:00:00"); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0"); };
 const fCorta = iso => { const p = String(iso).split("-"); return p[2] + "/" + p[1]; };
@@ -865,7 +879,7 @@ function pintarCuerpo(){
   h += `<div class="mets">${disp.map(m => {
     const serie = BASC.filter(x => x[m.k] != null), u = serie[serie.length-1], p0 = serie[0];
     const dif = serie.length > 1 ? Math.round((u[m.k] - p0[m.k]) * 10) / 10 : null;
-    return `<button class="met ${m.k===CUERPO_SEL?"on":""}" data-met="${m.k}"><small>${m.t}</small><b>${kg1(u[m.k])}${m.u ? `<u>${m.u}</u>` : ""}</b><i>${dif === null ? fCorta(u.f) : (dif > 0 ? "+" : dif < 0 ? "−" : "") + kg1(Math.abs(dif)) + (m.u ? " " + m.u : "") + " desde " + fCorta(p0.f)}</i></button>`; }).join("")}</div>`;
+    return `<button class="met ${m.k===CUERPO_SEL?"on":""}" data-met="${m.k}"><small class="lb-ico">${ICO_MET[m.k] || ""}${m.t}</small><b>${kg1(u[m.k])}${m.u ? `<u>${m.u}</u>` : ""}</b><i>${dif === null ? fCorta(u.f) : (dif > 0 ? "+" : dif < 0 ? "−" : "") + kg1(Math.abs(dif)) + (m.u ? " " + m.u : "") + " desde " + fCorta(p0.f)}</i></button>`; }).join("")}</div>`;
   const m = MET.find(x => x.k === CUERPO_SEL), serie = BASC.filter(x => x[m.k] != null);
   h += `<div class="card"><div class="mut small">${m.t}${m.u ? " (" + m.u + ")" : ""}</div>${graficaRM(serie.map(x => [x.f, x[m.k]]), x => fCorta(x[0]), true)}</div>`;
   const ult = BASC.slice(-6).reverse();
@@ -952,7 +966,7 @@ function viewCheckin(){
   const r = registroSemana() || {};
   if (!CK) CK = { esc: {}, fotos: [], com: "" };
   const val = k => r[k] != null ? String(r[k]).replace(".", ",") : "";
-  const campo = m => `<div><label class="lb" for="ck-${m.k}">${m.t}${m.u ? " (" + m.u + ")" : ""}${m.ob ? " *" : ""}</label><input class="txt" id="ck-${m.k}" data-ck="${m.k}" inputmode="decimal" autocomplete="off" value="${val(m.k)}" placeholder="${m.ob ? "Obligatorio" : "Opcional"}"></div>`;
+  const campo = m => `<div><label class="lb lb-ico" for="ck-${m.k}">${ICO_MET[m.k] || ""}${m.t}${m.u ? " (" + m.u + ")" : ""}${m.ob ? " *" : ""}</label><input class="txt" id="ck-${m.k}" data-ck="${m.k}" inputmode="decimal" autocomplete="off" value="${val(m.k)}" placeholder="${m.ob ? "Obligatorio" : "Opcional"}"></div>`;
   const prin = MET.filter(m => m.k === "peso" || m.k === "cintura"), bas = MET.filter(m => m.k !== "peso" && m.k !== "cintura");
   app.innerHTML = `<button class="back" data-go="cuerpo" id="ckVolver">← Progreso</button>
   <h1>Check-in semanal</h1>
@@ -1487,7 +1501,7 @@ function viewDay(n){
   d.ej.forEach((e,i)=>{
     const o = e.objetivo;
     h += `<div class="card ex"><h3><span class="num">${i+1}</span><span>${esc(e.titulo)}</span></h3>
-    ${e.musculos?`<div class="chips">${e.musculos.split(",").map(m=>`<span>${esc(cap(m.trim()))}</span>`).join("")}</div>`:""}
+    ${e.musculos||e.video?`<div class="chips">${(e.musculos||"").split(",").filter(m=>m.trim()).map(m=>`<span>${esc(cap(m.trim()))}</span>`).join("")}${e.video?`<a class="vid" href="${esc(e.video)}" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" width="13" height="13" aria-hidden="true" fill="currentColor"><path d="M8 5.5v13l11-6.5z"/></svg>Ver técnica</a>`:""}</div>`:""}
     <div class="target"><span>Series <b>${o.series}</b></span>${o.reps?`<span>Reps <b>${esc(o.reps)}</b></span>`:""}${o.rir.some(Boolean)?`<span>RIR <b>${o.rir.map(r=>esc(r||"–")).join(" / ")}</b></span>`:""}${o.pausa?`<span>Pausa <b>${esc(o.pausa)}</b></span>`:""}${o.tecnica?`<span>Técnica <b>${esc(o.tecnica)}</b></span>`:""}</div>
     <table><tr><th>Serie</th><th>Reps</th><th>Kg</th><th>RIR</th><th></th></tr>`;
     const waBtn = `<a class="wa" href="${esc(waEjercicio(e, n))}" target="_blank" rel="noopener">${WA_ICON}Duda con este ejercicio</a>`;
