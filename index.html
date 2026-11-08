@@ -306,6 +306,9 @@
   .cl b{display:block;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .cl small{display:block;color:var(--mut);font-size:12.5px;margin-top:2px}
   .cl .st{flex:0 0 auto;font-size:11.5px;font-weight:600;padding:3px 9px;border-radius:999px}
+  .cl.inv{cursor:default} .cl.inv .av{background:#2a2410;color:#f4c24d}
+  .inv-wa{flex:0 0 auto;display:flex;align-items:center;gap:6px;background:#25d366;color:#06301a;font:700 13px Inter;text-decoration:none;padding:8px 12px;border-radius:999px}
+  .st-hot{background:#3a1d0b;color:#ff9b4d}
   .st-ok{background:#173322;color:#5fd38d} .st-warn{background:#33290f;color:#f4c24d} .st-no{background:var(--card2);color:var(--mut)} .st-off{background:#331717;color:#ff8a8a}
   .pseg{display:grid;grid-template-columns:1fr 1fr;gap:4px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:4px;margin:10px 0 12px}
   .pseg button{border:0;border-radius:9px;padding:9px 0;font:600 14px Inter;background:none;color:var(--mut);cursor:pointer}
@@ -1042,7 +1045,7 @@ function guardarCheckin(btn){
 /* ========== Modo entrenador ==========
    Entrando con el código de la pestaña "Entrenador" del panel: lista de clientes,
    cuándo usaron la app por última vez y acceso a la app de cada uno en solo lectura. */
-let CLIENTES = null, NINV = 0;
+let CLIENTES = null, NINV = 0, INVS = [];
 function haceTxt(iso){
   if (!iso) return "";
   const dias = Math.floor((Date.now() - new Date(iso).getTime()) / 864e5);
@@ -1069,7 +1072,7 @@ function viewCoach(){
   if (location.hash) history.replaceState(null, "", location.pathname + location.search);
   pintarCoach();
   const codigo = CODE;
-  api("clientes").then(r => { CLIENTES = Array.isArray(r) ? r : (r && r.clientes) || []; YO = (r && r.yo) || ""; NINV = (r && r.invitados) || 0; if (!D && CODE === codigo) pintarCoach(); })
+  api("clientes").then(r => { CLIENTES = Array.isArray(r) ? r : (r && r.clientes) || []; YO = (r && r.yo) || ""; NINV = (r && r.invitados) || 0; INVS = (r && r.inv) || []; if (!D && CODE === codigo) pintarCoach(); })
     .catch(e => { if (!D) app.innerHTML = `<div class="err-box">${esc(e.red ? "Sin conexión. Vuelve a intentarlo cuando tengas cobertura." : e.message)}</div><button class="link" id="salir">Salir del modo entrenador</button>`; });
 }
 // Avisos para Aitor: notas bajas en el último check-in, o más de 8 días sin check-in (solo clientes activos que ya usan la app)
@@ -1098,10 +1101,34 @@ function pintarCoach(){
     const ini = (c.nombre.match(/[A-Za-zÁÉÍÓÚÑáéíóúñ]+/g) || ["?"]).map(p => p[0]).join("").slice(0, 2).toUpperCase();
     const det = c.acceso ? `Entró ${haceTxt(c.acceso)}${c.entreno ? " · Apuntó un entrenamiento " + haceTxt(c.entreno) : ""}` : "Aún no ha abierto la app";
     h += `<button class="cl" data-cli="${CLIENTES.indexOf(c)}"><span class="av">${esc(ini)}${av ? '<i class="dot-r"></i>' : ""}</span><span class="ct"><b>${esc(c.nombre)}</b><small>${esc(det)}</small>${av ? `<small class="aviso">${esc(av)}</small>` : ""}</span><span class="st ${cls}">${t}</span></button>`; });
-  if (NINV) h += `<div class="free" style="margin-top:14px">🆓 <b>${NINV} ${NINV === 1 ? "invitado" : "invitados"}</b> en la versión gratis. Los tienes con su WhatsApp en la pestaña <b>Invitados</b> del panel.</div>`;
+  if (INVS.length) h += pintarInvitados();
+  else if (NINV) h += `<div class="free" style="margin-top:14px">🆓 <b>${NINV} ${NINV === 1 ? "invitado" : "invitados"}</b> en la versión gratis. Los tienes con su WhatsApp en la pestaña <b>Invitados</b> del panel.</div>`;
   h += `<p class="mut small" style="line-height:1.5;margin-top:14px">Al abrir un cliente ves su app tal cual la ve él, en modo solo lectura. Tus visitas no cuentan como actividad suya.</p>
   <button class="link" id="salir">Salir del modo entrenador</button>`;
   app.innerHTML = h;
+}
+// Invitados de la versión gratis: los más activos arriba y WhatsApp con un mensaje ya escrito para ofrecerles la asesoría
+function waInv(n){ const d = String(n || "").replace(/\D/g, ""); return d.length === 9 ? "34" + d : d; }
+function msgInv(g){
+  const nom = (g.nombre.split(/\s+/)[0] || "").replace(/^./, x => x.toUpperCase());
+  return g.entrenos > 0
+    ? `Hola ${nom}, soy Aitor 👋 He visto que llevas ${g.entrenos} ${g.entrenos === 1 ? "entreno" : "entrenos"} con la app, ¡bien ahí! ¿Quieres que te prepare una rutina personalizada para tu objetivo?`
+    : `Hola ${nom}, soy Aitor 👋 Gracias por apuntarte a la app. ¿Te ayudo a empezar con una rutina para tu objetivo?`;
+}
+function pintarInvitados(){
+  const t = x => x ? new Date(x).getTime() : 0;
+  const l = INVS.slice().sort((a, b) => b.semana - a.semana || b.entrenos - a.entrenos || t(b.acceso) - t(a.acceso));
+  const calientes = l.filter(g => g.semana >= 2).length;
+  let h = `<div class="mut small" style="margin:22px 0 4px">Invitados · versión gratis</div>
+  <div class="mut small" style="margin:0 0 8px">${l.length} ${l.length === 1 ? "invitado" : "invitados"}${calientes ? ` · ${calientes} muy ${calientes === 1 ? "activo" : "activos"} esta semana` : ""}</div>`;
+  l.forEach(g => {
+    const ini = (g.nombre.match(/[A-Za-zÁÉÍÓÚÑáéíóúñ]+/g) || ["?"]).map(p => p[0]).join("").slice(0, 2).toUpperCase();
+    const det = [g.alta ? "Se apuntó " + haceTxt(g.alta) : "", g.entrenos ? `${g.entrenos} ${g.entrenos === 1 ? "entreno" : "entrenos"}` : "Sin entrenos aún"].filter(Boolean).join(" · ");
+    const ult = g.acceso ? "Entró " + haceTxt(g.acceso) : "";
+    const wa = waInv(g.wa);
+    h += `<div class="cl inv"><span class="av">${esc(ini)}</span><span class="ct"><b>${esc(g.nombre)}</b><small>${esc(det)}</small>${ult ? `<small>${esc(ult)}</small>` : ""}${g.semana >= 2 ? `<small><span class="st st-hot">🔥 Muy activo</span></small>` : ""}</span>${wa ? `<a class="inv-wa" href="https://wa.me/${wa}?text=${encodeURIComponent(msgInv(g))}" target="_blank" rel="noopener">WhatsApp</a>` : ""}</div>`;
+  });
+  return h;
 }
 function abrirCliente(c){
   CODE = c.codigo; COACH_NOMBRE = c.nombre; D = null; PROG = null; PROG_SEL = ""; BASC = null;
