@@ -1107,7 +1107,23 @@ function abrirCliente(c){
   CODE = c.codigo; COACH_NOMBRE = c.nombre; D = null; PROG = null; PROG_SEL = ""; BASC = null;
   app.innerHTML = `<div class="center"><div class="spin"></div><p class="mut small" style="text-align:center;margin-top:14px">Abriendo la app de ${esc(c.nombre)}…</p></div>`;
   api("cargar", CODE, null).then(d => { if (CODE !== c.codigo) return; D = d; location.hash = ""; route(); refrescarBasc().catch(()=>{}); })
-    .catch(e => { CODE = COACH; toast(e.message || "No se ha podido abrir", true); viewCoach(); });
+    .catch(e => { CODE = COACH; if (/no tiene semanas/i.test((e && e.message) || "")) { viewCoachVacio(c); return; } toast(e.message || "No se ha podido abrir", true); viewCoach(); });
+}
+// El cliente existe pero su hoja aún no tiene rutina: se le explica a Aitor en vez de dar error
+function viewCoachVacio(c){
+  const [t, cls] = estadoCliente(c);
+  app.innerHTML = `<div class="brand"><div class="logo" style="display:flex;align-items:center;gap:10px"><img src="${LOGO}" alt="" style="width:40px;height:40px;border-radius:10px"><img src="${WM}" alt="Entrenaitor" style="height:24px"></div><span class="pill">Entrenador</span></div>
+  <h1>${esc(c.nombre)}</h1>
+  <div class="mut small" style="margin:-4px 0 14px"><span class="st ${cls}">${t}</span></div>
+  <div class="card" style="text-align:center;padding:26px 20px">
+    <div style="font-size:40px;line-height:1;margin-bottom:12px">📝</div>
+    <h2 style="margin:0 0 8px">Aún no tiene rutina</h2>
+    <div style="line-height:1.6;color:var(--mut)">Su hoja <b>Mesociclo</b> todavía no tiene semanas. Cuando la rellenes, aquí verás su app tal cual la ve él.</div>
+    <div style="line-height:1.6;color:var(--mut);margin-top:10px">Mientras tanto, si entra con su enlace le saldrá la pantalla de “Aitor está preparando tu rutina”.</div>
+  </div>
+  <button class="btn" id="vacioVolver" style="width:100%;margin-top:14px">Volver a mis clientes</button>`;
+  document.getElementById("vacioVolver").addEventListener("click", volverACoach);
+  window.scrollTo(0, 0);
 }
 const ICO_PESA_MINI = '<svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 7v10M18 7v10M3 10v4M21 10v4M6 12h12"/></svg>';
 function abrirPropio(){
