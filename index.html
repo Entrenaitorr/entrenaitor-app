@@ -476,8 +476,8 @@ function cargar(semana){
       const escribiendo = mostrada && document.activeElement && /^(INPUT|TEXTAREA)$/.test(document.activeElement.tagName);
       if (!escribiendo) { const y = window.scrollY; route(); if (mostrada) window.scrollTo(0, y); }
       vaciarCola();
-      const antes = ctaCheckin();
-      refrescarBasc().then(() => { const enInicio = !location.hash.replace("#","") || location.hash === "#inicio"; if (enInicio && ctaCheckin() !== antes) { const y = window.scrollY; viewHome(); window.scrollTo(0, y); } }).catch(()=>{}); })
+      const fotoInicio = () => ctaCheckin() + (D && D.nutricion && !D.sinRutina ? pesoMiniHTML(true) : ""), antes = fotoInicio();
+      refrescarBasc().then(() => { const enInicio = !location.hash.replace("#","") || location.hash === "#inicio"; if (enInicio && !D.sinRutina && fotoInicio() !== antes) { const y = window.scrollY; viewHome(); window.scrollTo(0, y); } }).catch(()=>{}); })
     .catch(e=>{
       actualizandoUI(false);
       if (mostrada) { if (e.red) toast("Sin conexión: te enseño la última versión guardada"); else if (/no válido|no está activo/i.test(e.message || "")) { D = null; viewLogin(e.message); } return; }
@@ -753,6 +753,22 @@ const esVip = () => D ? !!D.vip : !!(DIE && DIE.vip);
 function vwLeer(){ let w = null; try { w = (JSON.parse(localStorage.getItem(VKEY)) || {})[CODE] || null; } catch(e){} w = w || { n: 4, al: [[], [], [], []] }; while (w.al.length < w.n) w.al.push([]); return w; }
 function vwGuardar(){ try { const c = JSON.parse(localStorage.getItem(VKEY)) || {}; c[CODE] = VW; localStorage.setItem(VKEY, JSON.stringify(c)); } catch(e){} }
 // Inicio para clientes de solo dieta (sin rutina): lo que toca comer ahora + su peso en mini + aviso de pesarse
+function pesoMiniHTML(sinAviso){
+  let h = "";
+  const pesos = (BASC || []).filter(x => x.peso > 0);
+  const dias = pesos.length ? Math.floor((Date.now() - new Date(pesos[pesos.length - 1].f + "T12:00:00").getTime()) / 864e5) : 99;
+  if (pesos.length) {
+    const u = pesos[pesos.length - 1], p0 = pesos[0], dif = Math.round((u.peso - p0.peso) * 10) / 10;
+    const vs = pesos.slice(-12).map(x => x.peso), mn = Math.min(...vs), mx = Math.max(...vs), rg = mx - mn || 1;
+    const pts = vs.map((v, i) => `${vs.length === 1 ? 50 : i / (vs.length - 1) * 100},${28 - (v - mn) / rg * 24}`).join(" ");
+    const fecha = new Date(p0.f + "T12:00:00").toLocaleDateString("es-ES", { day: "numeric", month: "long" });
+    h += `<button class="card vh-peso" data-go="cuerpo"><div><small class="dz-sub">Tu peso</small><div class="vh-kg">${String(u.peso).replace(".", ",")} kg</div>
+      <small class="mut">${pesos.length > 1 ? `${dif > 0 ? "+" : dif < 0 ? "−" : ""}${String(Math.abs(dif)).replace(".", ",")} kg desde el ${fecha}` : "Tu primer registro"}</small></div>
+      <svg viewBox="0 0 100 30" preserveAspectRatio="none" aria-hidden="true"><polyline points="${pts}" fill="none" stroke="#3fc3c5" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/></svg></button>`;
+  }
+  if (dias >= 7 && !(sinAviso && ctaCheckin())) h += `<button class="cta-checkin" data-go="cuerpo"><span style="font-size:26px">⚖️</span><span><b>${pesos.length ? "Te toca pesarte" : "Apunta tu primer peso"}</b><small>${pesos.length ? `Hace ${dias} días de tu último registro. ` : ""}Así ves cómo evolucionas.</small></span></button>`;
+  return h;
+}
 function viewVipHome(){
   const nom = nombreCliente();
   if (DIE_CODE !== CODE) { DIE = dieMapa(dieLeer()); DIE_CODE = CODE; }
@@ -767,19 +783,7 @@ function viewVipHome(){
       <div class="dz-tot">${n0(mt.k)} kcal · P ${n0(mt.p)} · H ${n0(mt.h)} · G ${n0(mt.g)}</div>
       <button class="btn" data-go="nutricion" style="margin-top:10px">Ver mi dieta completa</button></div>`;
   } else h += `<button class="cta-checkin" data-go="nutricion" style="margin-top:12px"><span style="font-size:26px">🍽️</span><span><b>Mi dieta</b><small>${DIE ? "Aitor aún está preparando tu dieta." : "Cargando tu dieta…"}</small></span></button>`;
-  // Peso en mini
-  const pesos = (BASC || []).filter(x => x.peso > 0);
-  const dias = pesos.length ? Math.floor((Date.now() - new Date(pesos[pesos.length - 1].f + "T12:00:00").getTime()) / 864e5) : 99;
-  if (pesos.length) {
-    const u = pesos[pesos.length - 1], p0 = pesos[0], dif = Math.round((u.peso - p0.peso) * 10) / 10;
-    const vs = pesos.slice(-12).map(x => x.peso), mn = Math.min(...vs), mx = Math.max(...vs), rg = mx - mn || 1;
-    const pts = vs.map((v, i) => `${vs.length === 1 ? 50 : i / (vs.length - 1) * 100},${28 - (v - mn) / rg * 24}`).join(" ");
-    const fecha = new Date(p0.f + "T12:00:00").toLocaleDateString("es-ES", { day: "numeric", month: "long" });
-    h += `<button class="card vh-peso" data-go="cuerpo"><div><small class="dz-sub">Tu peso</small><div class="vh-kg">${String(u.peso).replace(".", ",")} kg</div>
-      <small class="mut">${pesos.length > 1 ? `${dif > 0 ? "+" : dif < 0 ? "−" : ""}${String(Math.abs(dif)).replace(".", ",")} kg desde el ${fecha}` : "Tu primer registro"}</small></div>
-      <svg viewBox="0 0 100 30" preserveAspectRatio="none" aria-hidden="true"><polyline points="${pts}" fill="none" stroke="#3fc3c5" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/></svg></button>`;
-  }
-  if (dias >= 7) h += `<button class="cta-checkin" data-go="cuerpo"><span style="font-size:26px">⚖️</span><span><b>${pesos.length ? "Te toca pesarte" : "Apunta tu primer peso"}</b><small>${pesos.length ? `Hace ${dias} días de tu último registro. ` : ""}Así ves cómo evolucionas.</small></span></button>`;
+  h += pesoMiniHTML();
   app.innerHTML = h;
   if (!DIE) api("dieta", CODE).then(d => { DIE = dieMapa(d); dieGuardar(d); if (vhEnInicio()) viewVipHome(); }).catch(() => {});
   if (!viewVipHome.basc) { viewVipHome.basc = 1; refrescarBasc().then(() => { if (vhEnInicio()) viewVipHome(); }).catch(() => {}); }
@@ -1691,6 +1695,7 @@ function viewHome(){
       ${statusOf(d)[0]==="Completado" && !domsHechas(d) ? `<div class="todo">⏱ A las 48 h: puntúa tus agujetas de este día</div>` : ""}
     </button>`;
   });
+  if (D.nutricion) { if (!BASC) BASC = leerBasc(); h += pesoMiniHTML(true); }
   h += `<button class="link" id="salir">Cerrar sesión</button>`;
   app.innerHTML = h;
   const wk = app.querySelector(".weeks"), on = wk && wk.querySelector(".on");
