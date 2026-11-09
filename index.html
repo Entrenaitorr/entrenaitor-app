@@ -821,6 +821,7 @@ function viewVipHome(){
   const pr = vipPropuesta();
   if (pr) h += `<div class="card vd-ajuste"><b>${pr.kcal < 0 ? "📉" : "📈"} ${esc(pr.txt)}</b><p class="mut small" style="line-height:1.5;margin:6px 0 10px">Te propongo ${pr.kcal < 0 ? "quitar" : "añadir"} ${Math.abs(pr.kcal)} kcal a tu dieta, sobre todo en hidratos. Recalculo tus gramos y queda guardada.</p><button class="btn" data-vadj="${pr.kcal}">Ajustar mi dieta</button></div>`;
   h += pesoMiniHTML();
+  h += `<button class="link" id="salir">Cerrar sesión</button>`;
   app.innerHTML = h;
   if (!DIE) api("dieta", CODE).then(d => { DIE = dieMapa(d); dieGuardar(d); if (vhEnInicio()) viewVipHome(); }).catch(() => {});
   if (!viewVipHome.basc) { viewVipHome.basc = 1; refrescarBasc().then(() => { if (vhEnInicio()) viewVipHome(); }).catch(() => {}); }
@@ -1102,7 +1103,12 @@ function pintarCuerpo(){
   if (BASC_ERR) h += `<div class="err-box">${esc(BASC_ERR)}</div>`;
   if (!BASC) { app.innerHTML = h + `<div class="card" style="text-align:center;padding:30px"><div class="spin"></div></div>`; return; }
   const ya = registroSemana();
-  h += `<button class="btn" data-go="checkin" style="margin-top:12px">${ya ? "Editar el registro de esta semana" : "Hacer el check-in de esta semana"}</button>`;
+  if (D && D.sinRutina) h += `<div class="card ap-peso" style="margin-top:12px"><b>${ya ? "Corregir el peso de esta semana" : "Apunta tu peso de esta semana"}</b>
+    <div class="mut small" style="margin:4px 0 10px;line-height:1.5">En ayunas, después de ir al baño. Una vez por semana es suficiente.</div>
+    <div class="vd-g"><label>Peso (kg)<input class="txt" id="ap-peso" inputmode="decimal" placeholder="Ej. 72,4" value="${ya && ya.peso != null ? String(ya.peso).replace(".", ",") : ""}"></label>
+    <label>Cintura (cm) <span class="mut">· opcional</span><input class="txt" id="ap-cin" inputmode="decimal" value="${ya && ya.cintura != null ? String(ya.cintura).replace(".", ",") : ""}"></label></div>
+    <div class="field-err" id="ap-err" hidden></div><button class="btn" id="apGuardar" style="margin-top:10px">Guardar</button></div>`;
+  else h += `<button class="btn" data-go="checkin" style="margin-top:12px">${ya ? "Editar el registro de esta semana" : "Hacer el check-in de esta semana"}</button>`;
   if (!BASC.length) {
     app.innerHTML = h + `<div class="card"><b>Aún no tienes registros</b><p class="mut small" style="margin:6px 0 0;line-height:1.5">Cada viernes o fin de semana, pésate en ayunas y apunta lo que marca tu báscula. Aquí irás viendo tu evolución.</p></div>`;
     return;
@@ -1974,6 +1980,15 @@ app.addEventListener("click", ev=>{
   if (t.id === "instNo"){ try { localStorage.setItem("entrenaitor_inst_ok","1"); } catch(e){} route(); return; }
   if (t.id === "instCopy"){ const u = enlaceCliente();
     (navigator.clipboard ? navigator.clipboard.writeText(u) : Promise.reject()).then(()=>toast("Enlace copiado. Pégalo en Chrome")).catch(()=>{ window.prompt("Copia este enlace y ábrelo en Chrome:", u); }); return; }
+  if (t.id === "apGuardar"){ const n = id => parseFloat(String(document.getElementById(id).value).trim().replace(",", ".")), err = document.getElementById("ap-err");
+    const peso = n("ap-peso"), cin = n("ap-cin"), rawCin = document.getElementById("ap-cin").value.trim();
+    const fallo = !(peso >= 25 && peso <= 300) ? "Escribe tu peso en kg, por ejemplo 72,4." : rawCin && !(cin >= 40 && cin <= 200) ? "Revisa la cintura: en cm, entre 40 y 200." : "";
+    if (fallo) { err.textContent = fallo; err.hidden = false; return; }
+    const datos = { fecha: hoyISO(), peso: peso, cintura: rawCin ? cin : "" };
+    t.disabled = true; t.textContent = "Guardando…";
+    guardar("guardarBascula", datos).then(r => { BASC = Array.isArray(r) ? r : mezclarBasc(BASC || [], datos); guardarBasc(BASC); toast("Peso guardado ✅"); pintarCuerpo(); })
+      .catch(() => { t.disabled = false; t.textContent = "Guardar"; });
+    return; }
   if (t.id === "salir"){ try { localStorage.removeItem(INVK); } catch(e){} INVITADO = null; store.del(); CODE = ""; D = null; PROG = null; PROG_SEL = ""; BASC = null; COACH = ""; COACH_NOMBRE = ""; PROPIO = false; YO = ""; CLIENTES = null; coachUI(); location.hash = ""; tabbarUI(); viewLogin(); return; }
   if (t.dataset.go){ go(t.dataset.go); return; }
   if (t.dataset.week){ cargar(+t.dataset.week); return; }
