@@ -152,7 +152,7 @@
   .picker svg{flex:0 0 auto;color:var(--acc-txt)}
   .vh-peso{width:100%;display:flex;align-items:center;justify-content:space-between;gap:14px;text-align:left;color:var(--txt);cursor:pointer;margin-top:12px}
   .vh-peso svg{width:46%;height:46px} .vh-kg{font:800 italic 30px 'Barlow Condensed',sans-serif;margin:2px 0}
-  .vd-ajuste{border-color:#11484a;background:#0a2628;margin-top:12px} .vd-g{display:grid;grid-template-columns:1fr 1fr;gap:10px} .vd-g label,.vd-l{display:block;font-size:12.5px;color:var(--mut)} .vd-l{margin-top:10px}
+  .vd-auto{margin-top:12px;padding-top:12px;border-top:1px solid var(--line,#24302f)} .vd-sin{border:1px solid var(--line,#2c3a39);background:transparent;color:var(--txt);border-radius:99px;padding:6px 12px;font-size:13px;cursor:pointer} .vd-sin.on{background:#3a1717;border-color:#7a2a2a;color:#ffb4b4} .vd-ajuste{border-color:#11484a;background:#0a2628;margin-top:12px} .vd-g{display:grid;grid-template-columns:1fr 1fr;gap:10px} .vd-g label,.vd-l{display:block;font-size:12.5px;color:var(--mut)} .vd-l{margin-top:10px}
   .vd-g .txt,.vd-l .txt{margin-top:4px;width:100%;box-sizing:border-box}
   .vd-res{margin-top:12px;padding:10px 12px;border-radius:12px;background:#0a2628;color:#a9e2e3;font-size:14px}
   .vd-n button{flex:1} .vd-com{padding:10px 0;border-top:1px solid var(--line)} .vd-com:first-of-type{border-top:0}
@@ -758,6 +758,61 @@ const VKEY = "entrenaitor_vipdieta";
 const NOMBRES_COM = { 3: ["Desayuno", "Comida", "Cena"], 4: ["Desayuno", "Comida", "Merienda", "Cena"], 5: ["Desayuno", "Media mañana", "Comida", "Merienda", "Cena"] };
 let VW = null, VW_BUSCA = -1;
 const esVip = () => D ? !!D.vip : !!(DIE && DIE.vip);
+// ---- Dieta automática (VIP): platos lógicos según el momento del día, sin lo que no come ----
+// Cada ingrediente: [patrón del nombre en la Base de datos, lo que contiene para poder quitarlo]
+const PLATOS = {
+  desayuno: [
+    [[/^copos de avena/, "gluten"], [/^queso fres[oc] batido 0/, "lacteo"], [/^pl[aá]tano \(130/, ""], [/^crema de cacahuete 100% - carrefour/, "fsecos"]],
+    [[/^pan de molde 100% integral/, "gluten"], [/^huevo l 65/, "huevo"], [/^jam[oó]n cocido extra/, "carne"], [/^aceite de oliva/, ""], [/^manzana/, ""]],
+    [[/^copos de avena/, "gluten"], [/^leche semidesnatada/, "lacteo"], [/^claras de huevo/, "huevo"], [/^manzana/, ""], [/^nueces/, "fsecos"]],
+    [[/^pan integral/, "gluten"], [/^jam[oó]n serrano/, "carne"], [/^aceite de oliva/, ""], [/^queso fres[oc] batido 0/, "lacteo"], [/^manzana/, ""]],
+    [[/^claras de huevo/, "huevo"], [/^huevo l 65/, "huevo"], [/^pan de molde 100% integral/, "gluten"], [/^manzana/, ""], [/^aguacate/, ""]],
+    [[/^crema de arroz/, ""], [/^queso fres[oc] batido 0/, "lacteo"], [/^pl[aá]tano \(130/, ""], [/^crema de cacahuete 100% - carrefour/, "fsecos"]],
+    [[/^huevo l 65/, "huevo"], [/^claras de huevo/, "huevo"], [/^patata cruda/, ""], [/^manzana/, ""], [/^aguacate/, ""]],
+    [[/^jam[oó]n cocido extra/, "carne"], [/^boniato/, ""], [/^manzana/, ""], [/^aguacate/, ""]]],
+  tentempie: [
+    [[/^natillas \+proteinas vainilla/, "lacteo"], [/^manzana/, ""], [/^nueces/, "fsecos"]],
+    [[/^pan de molde 100% integral/, "gluten"], [/^jam[oó]n cocido extra/, "carne"], [/^queso lonchas semicurado/, "lacteo"]],
+    [[/^queso fres[oc] batido 0/, "lacteo"], [/^corn flakes/, "gluten"], [/^manzana/, ""], [/^crema de cacahuete 100% - carrefour/, "fsecos"]],
+    [[/^manzana/, ""], [/^jam[oó]n serrano/, "carne"], [/^pan integral/, "gluten"], [/^pistachos/, "fsecos"]],
+    [[/^manzana/, ""], [/^at[uú]n claro al natural/, "pescado"], [/^picos camperos/, "gluten"], [/^aguacate/, ""]],
+    [[/^queso fres[oc] batido 0/, "lacteo"], [/^crema de arroz/, ""], [/^manzana/, ""], [/^aguacate/, ""]],
+    [[/^jam[oó]n cocido extra/, "carne"], [/^manzana/, ""], [/^aguacate/, ""]]],
+  comida: [
+    [[/^filetes de pechuga de pollo/, "carne"], [/^arroz largo basmati/, ""], [/^aceite de oliva/, ""]],
+    [[/^ternera magra/, "carne"], [/^pasta integral/, "gluten"], [/^aceite de oliva/, ""]],
+    [[/^lentejas cocidas/, ""], [/^muslo de pollo/, "carne"], [/^patata cruda/, ""], [/^aceite de oliva/, ""]],
+    [[/^salm[oó]n fresco/, "pescado"], [/^boniato/, ""], [/^aceite de oliva/, ""]],
+    [[/^carne picada de vacuno/, "carne"], [/^macarrones \(crudo\)/, "gluten"], [/^aceite de oliva/, ""]],
+    [[/^filetes de lomo adobado/, "carne"], [/^patata cruda/, ""], [/^aceite de oliva/, ""]]],
+  cena: [
+    [[/^merluza/, "pescado"], [/^patata cruda/, ""], [/^aceite de oliva/, ""]],
+    [[/^huevo l 65/, "huevo"], [/^claras de huevo/, "huevo"], [/^patata cruda/, ""], [/^aceite de oliva/, ""]],
+    [[/^filetes de pechuga de pollo/, "carne"], [/^tortillas de trigo 61/, "gluten"], [/^aguacate/, ""]],
+    [[/^salm[oó]n fresco/, "pescado"], [/^arroz largo basmati/, ""], [/^aceite de oliva/, ""]],
+    [[/^at[uú]n claro al natural/, "pescado"], [/^huevo l 65/, "huevo"], [/^patata cruda/, ""], [/^aceite de oliva/, ""]],
+    [[/^muslo de pollo/, "carne"], [/^boniato/, ""], [/^aceite de oliva/, ""]]]
+};
+const SIN_OPC = [["carne", "Carne"], ["pescado", "Pescado"], ["huevo", "Huevo"], ["lacteo", "Lácteos"], ["gluten", "Gluten"], ["fsecos", "Frutos secos"]];
+const tipoComida = nm => /desayuno/i.test(nm) ? "desayuno" : /comida/i.test(nm) ? "comida" : /cena/i.test(nm) ? "cena" : "tentempie";
+// Devuelve los alimentos de cada comida. "giro" cambia la combinación para el botón "Otra propuesta".
+function vwAuto(n, sin, giro){
+  const bd = (DIE && DIE.bd || []).filter(f => f.ok !== false), usados = {}, protDia = [];
+  const busca = re => (bd.find(f => re.test(normN(f.n))) || {}).n;
+  return NOMBRES_COM[n].map((nm, i) => {
+    const tipo = tipoComida(nm), lista = PLATOS[tipo];
+    const validos = lista.map(pl => pl.filter(([, c]) => sin.indexOf(c) < 0 || !c).length === pl.length ? pl.map(([re]) => busca(re)).filter(Boolean) : null)
+      .filter(a => a && a.length >= 2);
+    if (!validos.length) return [];
+    usados[tipo] = (usados[tipo] || 0) + 1;
+    const ini = giro + usados[tipo] - 1 + (tipo === "tentempie" ? i : 0);
+    // Que no se repita la misma proteína (huevo, pollo...) en dos comidas del día si hay alternativa
+    const prot = a => a.filter(x => /^Prote/.test((bd.find(f => f.n === x) || {}).sg || "")).map(x => normN(x).split(" ")[0]);
+    for (let k = 0; k < validos.length; k++) { const c = validos[(ini + k) % validos.length];
+      if (!prot(c).some(x => protDia.indexOf(x) >= 0)) { protDia.push(...prot(c)); return c; } }
+    const c = validos[ini % validos.length]; protDia.push(...prot(c)); return c;
+  });
+}
 // Misma regla que el panel de Aitor: último pesaje frente al de hace unas 2 semanas (% por semana)
 function evalPeso(pesos, obj){
   if (!pesos.length || !obj) return null;
@@ -888,6 +943,9 @@ function viewVipDieta(){
     <div class="vd-res" id="vd-macros">${vdMacrosTxt(r)}</div></div>
   <div class="card"><h2 style="margin:0 0 10px">2. ¿Cuántas comidas haces?</h2><div class="dz-seg vd-n">${[3, 4, 5].map(n => `<button class="${n === VW.n ? "on" : ""}" data-vdn="${n}">${n} comidas</button>`).join("")}</div></div>
   <div class="card"><h2 style="margin:0 0 6px">3. ¿Qué te apetece comer?</h2><div class="mut small" style="line-height:1.5;margin-bottom:8px">Pon en cada comida <b>algo de proteína, algo de hidratos y algo de grasa</b> (por ejemplo pollo, arroz y aceite) para que cuadre bien. Las verduras van libres.</div>
+    <div class="vd-auto"><div class="mut small" style="margin-bottom:6px">¿No sabes qué poner? Marca lo que <b>no</b> comes y te la monto yo:</div>
+    <div class="vd-chips">${SIN_OPC.map(([k, t]) => `<button class="vd-sin ${(VW.sin || []).indexOf(k) >= 0 ? "on" : ""}" data-vdsin="${k}">${(VW.sin || []).indexOf(k) >= 0 ? "🚫 " : ""}${t}</button>`).join("")}</div>
+    <button class="btn ghost" id="vdAuto" style="margin-top:10px">✨ ${VW.al.slice(0, VW.n).some(a => a.length) ? "Otra propuesta" : "Hazme la dieta"}</button></div>
     ${noms.map((nm, i) => `<div class="vd-com"><b>${nm}</b><div class="vd-chips">${(VW.al[i] || []).map((n, j) => `<button class="vd-chip" data-vdx="${i},${j}">${esc(nomPartes(n)[0])} <span aria-hidden="true">×</span></button>`).join("")}<button class="vd-add" data-vda="${i}">+ Añadir</button></div></div>`).join("")}</div>
   <button class="btn" id="vdCalc">Calcular mi dieta</button>
   <div id="vdRes">${VW.res ? vwResHTML() : ""}</div>
@@ -949,6 +1007,13 @@ app.addEventListener("click", ev => {
   if (t.dataset.vdx) { const [i, j] = t.dataset.vdx.split(",").map(Number); VW.al[i].splice(j, 1); VW.res = null; repinta(); return; }
   if (t.dataset.vda) { vwBuscar(+t.dataset.vda, ""); return; }
   if (t.dataset.vdadd && VW_BUSCA >= 0) { const i = VW_BUSCA; if (VW.al[i].indexOf(t.dataset.vdadd) < 0) VW.al[i].push(t.dataset.vdadd); VW.res = null; vwCerrar(); repinta(); return; }
+  if (t.dataset.vdsin) { const k = t.dataset.vdsin; VW.sin = VW.sin || []; const i = VW.sin.indexOf(k); if (i >= 0) VW.sin.splice(i, 1); else VW.sin.push(k); repinta(); return; }
+  if (t.id === "vdAuto") { if (!vipObjetivo(VW)) { toast("Rellena primero tus datos", true); return; }
+    VW.giro = (VW.giro || 0) + (VW.al.slice(0, VW.n).some(a => a.length) ? 1 : 0);
+    const al = vwAuto(VW.n, VW.sin || [], VW.giro);
+    al.forEach((a, i) => { VW.al[i] = a.slice(); });
+    if (al.some(a => !a.length)) { VW.res = null; vwGuardar(); viewVipDieta(); toast("Con todo eso quitado no me salen platos para alguna comida: añádela tú a mano.", true); return; }
+    VW.res = null; vwGuardar(); viewVipDieta(); const b = document.getElementById("vdCalc"); if (b) b.click(); return; }
   if (t.dataset.vdreset) { VW.ajuste = 0; VW.res = null; repinta(); return; }
   if (t.id === "vdCalc") { const r = vipObjetivo(VW); if (!r) { toast("Rellena primero tus datos", true); return; }
     const al = VW.al.slice(0, VW.n); if (al.some(a => !a.length)) { toast("Añade alimentos a todas las comidas", true); return; }
