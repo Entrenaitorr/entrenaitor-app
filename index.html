@@ -553,7 +553,7 @@ const OBJETIVOS = {
   mant:   { t: "Mantener",      ajuste: 0,     prot: 1.8, grasa: 0.9, extra: "Sin ajuste" }
 };
 function nutriDatos(){ let d = null; try { d = JSON.parse(localStorage.getItem(NKEY)); } catch(e){}
-  return Object.assign({ sexo: "h", edad: "", peso: "", altura: "", act: 2, obj: "masa" }, d || {}); }
+  return Object.assign({ sexo: "h", entrena: "s", edad: "", peso: "", altura: "", act: 2, obj: "masa" }, d || {}); }
 function nutriGuardar(d){ try { localStorage.setItem(NKEY, JSON.stringify(d)); } catch(e){} }
 function nutriCalc(d){
   const edad = +d.edad, peso = +String(d.peso).replace(",", "."), alt = +d.altura;
@@ -562,7 +562,13 @@ function nutriCalc(d){
   const gasto = tmb * ACTIVIDAD[d.act].f;
   const o = OBJETIVOS[d.obj];
   const kcal = Math.round(gasto * (1 + o.ajuste) / 10) * 10;
-  const p = Math.round(o.prot * peso), g = Math.round(o.grasa * peso);
+  // Proteína y grasa por kilo según sexo y si entrena fuerza (criterio de Aitor). Con mucho peso se calcula
+  // sobre un peso de referencia (IMC 27) para no disparar la proteína y la grasa.
+  const chica = d.sexo === "m", entrena = d.entrena !== "n";
+  const pk = entrena ? (chica ? 1.8 : 2) : 1.5;
+  const gk = d.obj === "grasa" ? (chica ? 1 : 0.8) : (chica ? 1.2 : 1);
+  const pRef = Math.min(peso, 27 * (alt / 100) * (alt / 100));
+  const p = Math.round(pk * pRef), g = Math.round(gk * pRef);
   const h = Math.max(0, Math.round((kcal - p * 4 - g * 9) / 4));
   return { tmb: Math.round(tmb), gasto: Math.round(gasto), ajusteKcal: Math.round(gasto * o.ajuste), kcal, p, g, h, o };
 }
@@ -608,6 +614,8 @@ function viewNutri(){
     <div class="seg">${Object.keys(OBJETIVOS).map(k => segBtn("obj", k, OBJETIVOS[k].t, d.obj === k)).join("")}</div>
     <label class="lb">Sexo</label>
     <div class="seg">${segBtn("sexo","h","Hombre",d.sexo==="h")}${segBtn("sexo","m","Mujer",d.sexo==="m")}</div>
+    <label class="lb">¿Entrenas fuerza?</label>
+    <div class="seg">${segBtn("entrena","s","Sí",d.entrena!=="n")}${segBtn("entrena","n","No",d.entrena==="n")}</div>
     <div class="grid3" style="margin-top:14px">
       <div><label class="lb" style="margin-top:0" for="n-edad">Edad</label><input class="txt" id="n-edad" data-n="edad" inputmode="numeric" value="${esc(d.edad)}" placeholder="años"></div>
       <div><label class="lb" style="margin-top:0" for="n-peso">Peso</label><input class="txt" id="n-peso" data-n="peso" inputmode="decimal" value="${esc(d.peso)}" placeholder="kg"></div>
@@ -843,7 +851,7 @@ function viewVipDieta(){
   let h = `<button class="back" data-go="nutricion">← Volver</button><h1>Crear mi dieta</h1>
   <div id="vd">
   <div class="card"><h2 style="margin:0 0 10px">1. Tus datos</h2>
-    <div class="vd-g"><label>Sexo${sel("vd-sexo", [["h", "Hombre"], ["m", "Mujer"]], d.sexo)}</label><label>Edad<input class="txt" id="vd-edad" inputmode="numeric" value="${esc(d.edad)}"></label>
+    <div class="vd-g"><label>Sexo${sel("vd-sexo", [["h", "Hombre"], ["m", "Mujer"]], d.sexo)}</label><label>¿Entrenas fuerza?${sel("vd-ent", [["s", "Sí"], ["n", "No"]], d.entrena)}</label><label>Edad<input class="txt" id="vd-edad" inputmode="numeric" value="${esc(d.edad)}"></label>
     <label>Peso (kg)<input class="txt" id="vd-peso" inputmode="decimal" value="${esc(d.peso)}"></label><label>Altura (cm)<input class="txt" id="vd-alt" inputmode="numeric" value="${esc(d.altura)}"></label></div>
     <label class="vd-l">Actividad${sel("vd-act", ACTIVIDAD.map((a, i) => [i, a.t + " · " + a.d]), d.act)}</label>
     <label class="vd-l">Objetivo${sel("vd-obj", Object.keys(OBJETIVOS).map(k => [k, OBJETIVOS[k].t]), d.obj)}</label>
@@ -860,7 +868,7 @@ function viewVipDieta(){
 }
 function vwDatos(){
   const g = id => (document.getElementById(id) || {}).value;
-  const d = Object.assign(nutriDatos(), { sexo: g("vd-sexo"), edad: g("vd-edad"), peso: g("vd-peso"), altura: g("vd-alt"), act: +g("vd-act"), obj: g("vd-obj") });
+  const d = Object.assign(nutriDatos(), { sexo: g("vd-sexo"), entrena: g("vd-ent"), edad: g("vd-edad"), peso: g("vd-peso"), altura: g("vd-alt"), act: +g("vd-act"), obj: g("vd-obj") });
   nutriGuardar(d); const r = nutriCalc(d), el = document.getElementById("vd-macros");
   if (el) el.innerHTML = r ? `<b>${fmt0(r.kcal)} kcal</b> · P ${r.p} g · H ${r.h} g · G ${r.g} g` : "Rellena tus datos para calcular tus calorías";
   if (VW && VW.res) { VW.res = null; vwGuardar(); const rr = document.getElementById("vdRes"); if (rr) rr.innerHTML = ""; }
