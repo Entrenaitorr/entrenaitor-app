@@ -1761,7 +1761,7 @@ function route(){
   if (!D) { if (COACH) viewCoach(); return; }
   if (D.invitado) { document.body.classList.remove("onb"); routeInv(location.hash.replace("#","")); window.scrollTo(0,0); return; }
   if (necesitaPrivacidad()) { tabbarUI(); viewPrivacidad(); return; }
-  if (!COACH && !bienvenidaVista()) { viewBienvenida(); return; }
+  if (!COACH && !D.sinRutina && !bienvenidaVista()) { viewBienvenida(); return; }
   document.body.classList.remove("onb");
   const hsh = location.hash.replace("#",""); let m;
   document.body.classList.toggle("vipsr", !!D.sinRutina);
