@@ -150,6 +150,15 @@
   .picker b{display:block;font:700 19px "Barlow Condensed",sans-serif;letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .picker small{display:block;color:var(--mut);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .picker svg{flex:0 0 auto;color:var(--acc-txt)}
+  .vd-g{display:grid;grid-template-columns:1fr 1fr;gap:10px} .vd-g label,.vd-l{display:block;font-size:12.5px;color:var(--mut)} .vd-l{margin-top:10px}
+  .vd-g .txt,.vd-l .txt{margin-top:4px;width:100%;box-sizing:border-box}
+  .vd-res{margin-top:12px;padding:10px 12px;border-radius:12px;background:#0a2628;color:#a9e2e3;font-size:14px}
+  .vd-n button{flex:1} .vd-com{padding:10px 0;border-top:1px solid var(--line)} .vd-com:first-of-type{border-top:0}
+  .vd-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+  .vd-chip{border:1px solid var(--line);background:var(--card2);color:var(--txt);border-radius:999px;padding:6px 10px;font:600 13px Inter;cursor:pointer}
+  .vd-chip span{color:var(--mut);margin-left:2px} .vd-add{border:1px dashed var(--acc);background:transparent;color:var(--acc-txt);border-radius:999px;padding:6px 12px;font:600 13px Inter;cursor:pointer}
+  .vd-aviso{margin-top:8px;font-size:13px;color:#f4c24d;line-height:1.45}
+  body.vipsr .cta-checkin[data-go="checkin"], body.vipsr [data-go="checkin"]{display:none!important}
   .sheet-bg{position:fixed;inset:0;z-index:40;background:rgba(0,0,0,.55);display:flex;align-items:flex-end;justify-content:center;animation:fade .18s ease}
   .sheet-bg[hidden]{display:none}
   .sheet{width:min(520px,100%);max-height:78vh;display:flex;flex-direction:column;background:#11181b;border:1px solid var(--line);border-bottom:0;border-radius:22px 22px 0 0;padding:8px 14px calc(14px + env(safe-area-inset-bottom));animation:sube .22s ease}
@@ -684,7 +693,9 @@ function viewDieta(){
 function pintarDieta(){
   let h = `<button class="back" data-go="inicio">← Volver</button><div class="brand"><h1>Mi dieta</h1><img src="icons/nutricion.svg" alt="" style="width:56px;height:56px"></div>`;
   if (!DIE) { app.innerHTML = h + (DIE_ERR ? `<div class="err-box">${esc(DIE_ERR)}</div>` : `<div class="card" style="text-align:center;padding:30px"><div class="spin"></div></div>`); return; }
-  if (DIE.bloqueada || DIE.sinDieta || !(DIE.comidas || []).length) { app.innerHTML = h + `<div class="card" style="line-height:1.55">Aitor aún está preparando tu dieta. En cuanto la tenga lista te aparecerá aquí.</div>`; return; }
+  const vipBtn = esVip() && !LECTURA() ? `<button class="cta-checkin" data-go="vipdieta"><span style="font-size:26px">✨</span><span><b>Crear mi dieta</b><small>Elige lo que te apetece y la app calcula los gramos.</small></span></button>` : "";
+  if (DIE.bloqueada || DIE.sinDieta || !(DIE.comidas || []).length) { app.innerHTML = h + (vipBtn || `<div class="card" style="line-height:1.55">Aitor aún está preparando tu dieta. En cuanto la tenga lista te aparecerá aquí.</div>`); return; }
+  h += vipBtn;
   const s = selLeer(), tot = { k: 0, g: 0, p: 0, h: 0 }, ahora = comidaAhora(DIE.comidas.length);
   let cuerpo = "";
   DIE.comidas.forEach((c, ci) => {
@@ -728,6 +739,139 @@ app.addEventListener("click", ev => {
   if (t.dataset.dzpick && DIE_CAMBIO) { const x = DIE_CAMBIO.ops[+t.dataset.dzpick], s = selLeer(); s.items[DIE_CAMBIO.ci + "_" + DIE_CAMBIO.o] = x.items; selGuardar(s);
     cerrarCambio(); pintarDieta(); toast("Cambiado: " + nomPartes(x.n)[0]); return; }
   if (t.dataset.dzreset) { const s = selLeer(); delete s.items[t.dataset.dzreset.replace(",", "_")]; selGuardar(s); pintarDieta(); return; }
+});
+
+/* ========== Modo VIP: el cliente crea su propia dieta ==========
+   Solo si Aitor marca "VIP" en el panel. Elige sus datos, nº de comidas y alimentos (de la base verificada);
+   la app calcula los gramos (mismo sistema que "Cuadrar gramos") y la guarda en su hoja de dieta. */
+const VKEY = "entrenaitor_vipdieta";
+const NOMBRES_COM = { 3: ["Desayuno", "Comida", "Cena"], 4: ["Desayuno", "Comida", "Merienda", "Cena"], 5: ["Desayuno", "Media mañana", "Comida", "Merienda", "Cena"] };
+let VW = null, VW_BUSCA = -1;
+const esVip = () => !!((D && D.vip) || (DIE && DIE.vip));
+function vwLeer(){ let w = null; try { w = (JSON.parse(localStorage.getItem(VKEY)) || {})[CODE] || null; } catch(e){} w = w || { n: 4, al: [[], [], [], []] }; while (w.al.length < w.n) w.al.push([]); return w; }
+function vwGuardar(){ try { const c = JSON.parse(localStorage.getItem(VKEY)) || {}; c[CODE] = VW; localStorage.setItem(VKEY, JSON.stringify(c)); } catch(e){} }
+function viewVipHome(){
+  const nom = nombreCliente();
+  app.innerHTML = `<div class="brand"><div class="logo" style="display:flex;align-items:center;gap:10px"><img src="${LOGO}" alt="" style="width:40px;height:40px;border-radius:10px"><img src="${WM}" alt="Entrenaitor" style="height:24px"></div><span class="pill">VIP</span></div>
+    <h1>Hola${nom ? ", " + esc(nom) : ""} 👋</h1>
+    <button class="cta-checkin" data-go="nutricion" style="margin-top:12px"><span style="font-size:26px">🍽️</span><span><b>Mi dieta</b><small>Tus comidas de hoy, con los gramos y los cambios de alimento.</small></span></button>
+    <button class="cta-checkin" data-go="vipdieta"><span style="font-size:26px">✨</span><span><b>Crear mi dieta</b><small>Elige lo que te apetece comer y la app calcula los gramos para que cuadre.</small></span></button>
+    <button class="cta-checkin" data-go="cuerpo"><span style="font-size:26px">⚖️</span><span><b>Mi peso</b><small>Apunta tu peso y medidas y mira cómo evolucionas.</small></span></button>`;
+}
+// ---- Cálculo de gramos (igual que "Cuadrar gramos" de la hoja) ----
+function vwNnls(vars, t, base){
+  const resto = { k: t.k - base.k, g: t.g - base.g, h: t.h - base.h, p: t.p - base.p };
+  const filas = [["k", 1.5, Math.max(t.k, 50)], ["p", 1.5, Math.max(t.p, 5)], ["g", 1, Math.max(t.g, 5)], ["h", 1, Math.max(t.h, 5)]];
+  const n = vars.length, Q = [], c = [];
+  for (let i = 0; i < n; i++) { Q.push(new Array(n).fill(0)); c.push(0); }
+  filas.forEach(([m, w, T]) => { for (let i = 0; i < n; i++) { const ai = vars[i][m] / T; c[i] += w * ai * (resto[m] / T); for (let j = 0; j < n; j++) Q[i][j] += w * ai * vars[j][m] / T; } });
+  for (let i = 0; i < n; i++) Q[i][i] += 0.002;
+  const x = new Array(n).fill(0.5);
+  for (let it = 0; it < 3000; it++) { let mov = 0;
+    for (let i = 0; i < n; i++) { let s = c[i]; for (let j = 0; j < n; j++) if (j !== i) s -= Q[i][j] * x[j]; const nx = Math.min(vwTope(vars[i]) / 100, Math.max(0, s / Q[i][i])); mov = Math.max(mov, Math.abs(nx - x[i])); x[i] = nx; }
+    if (mov < 1e-7) break; }
+  return x;
+}
+// Máximo razonable por alimento en una comida (que no salgan 500 g de claras)
+const vwTope = f => f.sg === "Grasa" ? (f.k > 500 ? 30 : 150) : (f.sg === "Leche" || f.sg === "Lácteo") ? 400 : 300;
+const vwRed = g => g < 3 ? 0 : (g < 30 ? Math.round(g) : Math.round(g / 5) * 5);
+const vwErr = (r, t) => [["k", 1.5, Math.max(t.k, 50)], ["p", 1.5, Math.max(t.p, 5)], ["g", 1, Math.max(t.g, 5)], ["h", 1, Math.max(t.h, 5)]].reduce((s, [m, w, T]) => s + w * Math.pow((r[m] - t[m]) / T, 2), 0);
+function vwResolver(nombres, t){
+  const tot = { k: 0, g: 0, h: 0, p: 0 }, out = [];
+  const suma = (b, f, g) => { b.k += f.k * g / 100; b.g += f.g * g / 100; b.h += f.h * g / 100; b.p += f.p * g / 100; };
+  const fs = nombres.map(n => bdF(n)).filter(Boolean);
+  fs.filter(f => f.sg === "Verdura").forEach(f => { suma(tot, f, 100); out.push({ n: f.n, g: 100 }); });
+  const vars = fs.filter(f => f.sg !== "Verdura");
+  if (vars.length) {
+    const uds = vars.filter(f => f.ud > 0), lib = vars.filter(f => !(f.ud > 0)), x0 = vwNnls(vars, t, tot);
+    const ops = uds.map(f => { const u = x0[vars.indexOf(f)] * 100 / f.ud; return [...new Set([Math.max(1, Math.floor(u)), Math.max(1, Math.ceil(u))])]; });
+    const combos = ops.reduce((acc, o) => { const r = []; acc.forEach(a => o.forEach(v => r.push(a.concat([v])))); return r; }, [[]]).slice(0, 64);
+    let mejor = null;
+    combos.forEach(cb => { const b = Object.assign({}, tot); uds.forEach((f, i) => suma(b, f, cb[i] * f.ud));
+      const xl = lib.length ? vwNnls(lib, t, b) : [], gr = lib.map((f, i) => vwRed(xl[i] * 100)); lib.forEach((f, i) => suma(b, f, gr[i]));
+      const e = vwErr(b, t); if (!mejor || e < mejor.e) mejor = { e: e, cb: cb, gr: gr }; });
+    uds.forEach((f, i) => { const g = mejor.cb[i] * f.ud; suma(tot, f, g); out.push({ n: f.n, g: g }); });
+    lib.forEach((f, i) => { const g = mejor.gr[i]; suma(tot, f, g); if (g > 0) out.push({ n: f.n, g: g }); });
+  }
+  const ok = (a, b, tol) => Math.abs(a - b) <= tol;
+  const bien = ok(tot.k, t.k, Math.max(25, t.k * 0.05)) && ok(tot.p, t.p, Math.max(3, t.p * 0.1)) && ok(tot.g, t.g, Math.max(3, t.g * 0.15)) && ok(tot.h, t.h, Math.max(5, t.h * 0.1));
+  let consejo = "";
+  if (!bien) { const nm = { g: "grasa", h: "hidratos", p: "proteína" }, ej = { g: "aceite, aguacate o frutos secos", h: "arroz, pan, patata o fruta", p: "pollo, claras, atún o yogur proteico" };
+    const d = ["g", "h", "p"].map(m => ({ m: m, r: (tot[m] - t[m]) / Math.max(t[m], 5) })).sort((a, b) => Math.abs(b.r) - Math.abs(a.r))[0];
+    consejo = d.r < 0 ? `Le falta ${nm[d.m]}: añade algo como ${ej[d.m]}.` : `Le sobra ${nm[d.m]}: quita algún alimento con ${({ g: "mucha grasa", h: "muchos hidratos", p: "mucha proteína" })[d.m]}.`; }
+  return { items: out, tot: tot, bien: bien, consejo: consejo };
+}
+// ---- Pantalla ----
+function viewVipDieta(){
+  if (!esVip()) { go("nutricion"); return; }
+  if (!DIE || !DIE.bd) { app.innerHTML = `<button class="back" data-go="nutricion">← Volver</button><h1>Crear mi dieta</h1><div class="card" style="text-align:center;padding:30px"><div class="spin"></div></div>`;
+    api("dieta", CODE).then(d => { DIE = dieMapa(d); dieGuardar(d); if (location.hash === "#vipdieta") viewVipDieta(); }).catch(e => toast(e.red ? "Sin conexión" : e.message, true)); return; }
+  dieMapa(DIE); VW = VW && VW._c === CODE ? VW : Object.assign(vwLeer(), { _c: CODE });
+  const d = nutriDatos(), r = nutriCalc(d), noms = NOMBRES_COM[VW.n];
+  const sel = (id, ops, v) => `<select class="txt" id="${id}">${ops.map(([k, t]) => `<option value="${k}" ${String(k) === String(v) ? "selected" : ""}>${esc(t)}</option>`).join("")}</select>`;
+  let h = `<button class="back" data-go="nutricion">← Volver</button><h1>Crear mi dieta</h1>
+  <div id="vd">
+  <div class="card"><h2 style="margin:0 0 10px">1. Tus datos</h2>
+    <div class="vd-g"><label>Sexo${sel("vd-sexo", [["h", "Hombre"], ["m", "Mujer"]], d.sexo)}</label><label>Edad<input class="txt" id="vd-edad" inputmode="numeric" value="${esc(d.edad)}"></label>
+    <label>Peso (kg)<input class="txt" id="vd-peso" inputmode="decimal" value="${esc(d.peso)}"></label><label>Altura (cm)<input class="txt" id="vd-alt" inputmode="numeric" value="${esc(d.altura)}"></label></div>
+    <label class="vd-l">Actividad${sel("vd-act", ACTIVIDAD.map((a, i) => [i, a.t + " · " + a.d]), d.act)}</label>
+    <label class="vd-l">Objetivo${sel("vd-obj", Object.keys(OBJETIVOS).map(k => [k, OBJETIVOS[k].t]), d.obj)}</label>
+    <div class="vd-res" id="vd-macros">${r ? `<b>${fmt0(r.kcal)} kcal</b> · P ${r.p} g · H ${r.h} g · G ${r.g} g` : "Rellena tus datos para calcular tus calorías"}</div></div>
+  <div class="card"><h2 style="margin:0 0 10px">2. ¿Cuántas comidas haces?</h2><div class="dz-seg vd-n">${[3, 4, 5].map(n => `<button class="${n === VW.n ? "on" : ""}" data-vdn="${n}">${n} comidas</button>`).join("")}</div></div>
+  <div class="card"><h2 style="margin:0 0 6px">3. ¿Qué te apetece comer?</h2><div class="mut small" style="line-height:1.5;margin-bottom:8px">Pon en cada comida <b>algo de proteína, algo de hidratos y algo de grasa</b> (por ejemplo pollo, arroz y aceite) para que cuadre bien. Las verduras van libres.</div>
+    ${noms.map((nm, i) => `<div class="vd-com"><b>${nm}</b><div class="vd-chips">${(VW.al[i] || []).map((n, j) => `<button class="vd-chip" data-vdx="${i},${j}">${esc(nomPartes(n)[0])} <span aria-hidden="true">×</span></button>`).join("")}<button class="vd-add" data-vda="${i}">+ Añadir</button></div></div>`).join("")}</div>
+  <button class="btn" id="vdCalc">Calcular mi dieta</button>
+  <div id="vdRes">${VW.res ? vwResHTML() : ""}</div>
+  </div><div class="dz-sheet sheet-bg" id="vdSheet" hidden></div>`;
+  app.innerHTML = h;
+  const vd = document.getElementById("vd");
+  vd.addEventListener("input", vwDatos); vd.addEventListener("change", vwDatos);
+}
+function vwDatos(){
+  const g = id => (document.getElementById(id) || {}).value;
+  const d = Object.assign(nutriDatos(), { sexo: g("vd-sexo"), edad: g("vd-edad"), peso: g("vd-peso"), altura: g("vd-alt"), act: +g("vd-act"), obj: g("vd-obj") });
+  nutriGuardar(d); const r = nutriCalc(d), el = document.getElementById("vd-macros");
+  if (el) el.innerHTML = r ? `<b>${fmt0(r.kcal)} kcal</b> · P ${r.p} g · H ${r.h} g · G ${r.g} g` : "Rellena tus datos para calcular tus calorías";
+  if (VW && VW.res) { VW.res = null; vwGuardar(); const rr = document.getElementById("vdRes"); if (rr) rr.innerHTML = ""; }
+}
+function vwResHTML(){
+  const noms = NOMBRES_COM[VW.n], tot = { k: 0, p: 0, h: 0, g: 0 };
+  VW.res.forEach(c => ["k", "p", "h", "g"].forEach(m => tot[m] += c.tot[m]));
+  return `<h2 style="margin:22px 0 8px">Tu dieta</h2><div class="dz-dia"><div><b>${n0(tot.k)}</b><small>kcal</small></div><div><b>${n0(tot.p)}</b><small>proteína</small></div><div><b>${n0(tot.h)}</b><small>hidratos</small></div><div><b>${n0(tot.g)}</b><small>grasa</small></div></div>
+  ${VW.res.map((c, i) => `<div class="card dz-c"><div class="dz-top"><h2>${c.bien ? "✅" : "⚠️"} ${noms[i]}</h2></div>
+    ${c.items.length ? c.items.map(it => { const [a, b] = nomPartes(it.n); return `<div class="dz-it" style="cursor:default"><span class="dz-ico" aria-hidden="true">${icoAlim(it.n, bdF(it.n))}</span><span class="dz-n"><b>${esc(a)}</b>${b ? `<small>${esc(b)}</small>` : ""}</span><span class="dz-g">${cantTxt(it.n, it.g)}</span></div>`; }).join("") : `<div class="mut small">Añade alimentos a esta comida.</div>`}
+    <div class="dz-tot">${n0(c.tot.k)} kcal · P ${n0(c.tot.p)} · H ${n0(c.tot.h)} · G ${n0(c.tot.g)}</div>
+    ${c.consejo ? `<div class="vd-aviso">${esc(c.consejo)}</div>` : ""}</div>`).join("")}
+  ${DIE && DIE.sinHoja ? `<div class="err-box">Aún no tienes hoja de dieta. Pídele a Aitor que te la active y podrás guardarla.</div>` : `<button class="btn" id="vdSave">Guardar como mi dieta</button><div class="mut small" style="text-align:center;margin-top:6px">Sustituye a tu dieta actual.</div>`}`;
+}
+function vwBuscar(i, q){
+  VW_BUSCA = i; const el = document.getElementById("vdSheet"); if (!el) return;
+  const nq = normN(q || ""), lista = (DIE.bd || []).filter(f => f.ok !== false && (!nq || normN(f.n).indexOf(nq) >= 0)).slice(0, 80);
+  el.innerHTML = `<div class="sheet" role="dialog" aria-modal="true" aria-label="Añadir alimento"><div class="grab"></div><h3>Añadir a ${esc(NOMBRES_COM[VW.n][i])}</h3>
+    <input class="txt" id="vd-q" placeholder="Buscar alimento…" value="${esc(q || "")}" autocomplete="off" style="margin:0 4px 10px;width:calc(100% - 8px)">
+    <div class="sheet-list">${lista.map(f => { const [a, b] = nomPartes(f.n); return `<button class="sheet-it" data-vdadd="${esc(f.n)}"><span class="it-t"><b>${esc(a)}</b><small>${esc(b ? b + " · " : "")}${esc(f.sg)}</small></span><span class="it-v"><i>${n0(f.k)} kcal/100 g</i></span></button>`; }).join("") || `<div class="mut small" style="padding:10px">No está en la base de datos. Pídeselo a Aitor y lo añade.</div>`}</div></div>`;
+  el.hidden = false; document.body.style.overflow = "hidden";
+  const inp = document.getElementById("vd-q"); inp.addEventListener("input", () => { const p = inp.selectionStart; vwBuscar(i, inp.value); const n = document.getElementById("vd-q"); n.focus(); n.setSelectionRange(p, p); });
+  if (!q) setTimeout(() => inp.focus(), 50);
+}
+function vwCerrar(){ const el = document.getElementById("vdSheet"); if (el) el.hidden = true; document.body.style.overflow = ""; VW_BUSCA = -1; }
+app.addEventListener("click", ev => {
+  if (ev.target.id === "vdSheet") return vwCerrar();
+  const t = ev.target.closest("button"); if (!t || !VW) return;
+  const repinta = () => { const y = window.scrollY; vwGuardar(); viewVipDieta(); window.scrollTo(0, y); };
+  if (t.dataset.vdn) { VW.n = +t.dataset.vdn; while (VW.al.length < VW.n) VW.al.push([]); VW.res = null; repinta(); return; }
+  if (t.dataset.vdx) { const [i, j] = t.dataset.vdx.split(",").map(Number); VW.al[i].splice(j, 1); VW.res = null; repinta(); return; }
+  if (t.dataset.vda) { vwBuscar(+t.dataset.vda, ""); return; }
+  if (t.dataset.vdadd && VW_BUSCA >= 0) { const i = VW_BUSCA; if (VW.al[i].indexOf(t.dataset.vdadd) < 0) VW.al[i].push(t.dataset.vdadd); VW.res = null; vwCerrar(); repinta(); return; }
+  if (t.id === "vdCalc") { const r = nutriCalc(nutriDatos()); if (!r) { toast("Rellena primero tus datos", true); return; }
+    const al = VW.al.slice(0, VW.n); if (al.some(a => !a.length)) { toast("Añade alimentos a todas las comidas", true); return; }
+    const tc = { k: r.kcal / VW.n, p: r.p / VW.n, g: r.g / VW.n, h: r.h / VW.n };
+    VW.res = al.map(a => vwResolver(a, tc)); VW.obj = { g: r.g, h: r.h, p: r.p }; vwGuardar();
+    document.getElementById("vdRes").innerHTML = vwResHTML(); document.getElementById("vdRes").scrollIntoView({ behavior: "smooth", block: "start" }); return; }
+  if (t.id === "vdSave" && VW.res) { t.disabled = true; t.textContent = "Guardando…";
+    const plan = { comidas: VW.res.map((c, i) => ({ nom: NOMBRES_COM[VW.n][i], items: c.items })), obj: VW.obj };
+    api("guardarDietaVip", CODE, plan).then(() => { toast("¡Dieta guardada! 💪"); try { const s = selTodo(); delete s[CODE]; localStorage.setItem(DSEL, JSON.stringify(s)); } catch(e){} DIE = null; DIE_CODE = ""; go("nutricion"); })
+      .catch(e => { t.disabled = false; t.textContent = "Guardar como mi dieta"; toast(e.red ? "Sin conexión: inténtalo con internet" : e.message, true); }); return; }
 });
 
 /* ========== Progreso (RM estimado) ==========
@@ -840,7 +984,7 @@ function leerBasc(){ let b = null; try { b = (JSON.parse(localStorage.getItem(BK
 function guardarBasc(b){ try { const c = JSON.parse(localStorage.getItem(BKEY)) || {}; c[CODE] = b; localStorage.setItem(BKEY, JSON.stringify(c)); } catch(e){} }
 function refrescarBasc(){ return api("bascula", CODE).then(b => { BASC = b || []; cola().filter(it => it.fn === "guardarBascula" && it.code === CODE).forEach(it => { BASC = mezclarBasc(BASC, it.args[0]); }); BASC_ERR = ""; guardarBasc(BASC); return BASC; }); }
 const registroSemana = () => (BASC || []).find(x => lunesISO(x.f) === lunesISO(hoyISO()));
-function segProgreso(on){ return `<div class="pseg" role="tablist"><button role="tab" class="${on==="fuerza"?"on":""}" aria-selected="${on==="fuerza"}" data-go="progreso">Fuerza</button><button role="tab" class="${on==="cuerpo"?"on":""}" aria-selected="${on==="cuerpo"}" data-go="cuerpo">Cuerpo</button></div>`; }
+function segProgreso(on){ if (D && D.sinRutina) return ""; return `<div class="pseg" role="tablist"><button role="tab" class="${on==="fuerza"?"on":""}" aria-selected="${on==="fuerza"}" data-go="progreso">Fuerza</button><button role="tab" class="${on==="cuerpo"?"on":""}" aria-selected="${on==="cuerpo"}" data-go="cuerpo">Cuerpo</button></div>`; }
 const ICO_BASC = '<svg width="30" height="30" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="5"/><path d="M8.5 9.5a5 5 0 0 1 7 0"/><path d="M12 9.5l1.4-1.6"/></svg>';
 // Último check-in: lo apuntado en este móvil o lo que dice el panel (por si lo hizo desde otro móvil)
 function ultimoCheckin(){
@@ -1606,6 +1750,7 @@ function tabbarUI(){
   if (!D) return;
   const hsh = location.hash.replace("#","");
   const actual = hsh === "nutricion" ? hsh : (hsh === "progreso" || hsh === "cuerpo" || hsh === "checkin") ? "progreso" : "inicio";
+  const t0 = nav.querySelector('[data-tab="inicio"]'); if (t0 && t0.lastChild) t0.lastChild.textContent = D.sinRutina ? "Inicio" : "Entrenos";
   nav.querySelectorAll("[data-tab]").forEach(b => { const on = b.dataset.tab === actual; b.classList.toggle("on", on); if (on) b.setAttribute("aria-current","page"); else b.removeAttribute("aria-current"); });
   document.getElementById("tabWa").href = waGeneral();
 }
@@ -1619,7 +1764,10 @@ function route(){
   if (!COACH && !bienvenidaVista()) { viewBienvenida(); return; }
   document.body.classList.remove("onb");
   const hsh = location.hash.replace("#",""); let m;
-  if ((m = hsh.match(/^dia-(\d+)$/))) viewDay(+m[1]);
+  document.body.classList.toggle("vipsr", !!D.sinRutina);
+  if (hsh === "vipdieta") viewVipDieta();
+  else if (D.sinRutina) { if (hsh === "nutricion") viewDieta(); else if (hsh === "cuerpo" || hsh === "progreso") viewCuerpo(); else viewVipHome(); }
+  else if ((m = hsh.match(/^dia-(\d+)$/))) viewDay(+m[1]);
   else if ((m = hsh.match(/^agujetas-(\d+)$/))) viewDoms(+m[1]);
   else if (hsh === "nutricion") (D.nutricion ? viewDieta() : viewNutri());
   else if (hsh === "progreso") viewProgreso();
