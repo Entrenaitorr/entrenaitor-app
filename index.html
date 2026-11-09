@@ -152,7 +152,7 @@
   .picker svg{flex:0 0 auto;color:var(--acc-txt)}
   .vh-peso{width:100%;display:flex;align-items:center;justify-content:space-between;gap:14px;text-align:left;color:var(--txt);cursor:pointer;margin-top:12px}
   .vh-peso svg{width:46%;height:46px} .vh-kg{font:800 italic 30px 'Barlow Condensed',sans-serif;margin:2px 0}
-  .vd-auto{margin-top:12px;padding-top:12px;border-top:1px solid var(--line,#24302f)} .vd-sin{border:1px solid var(--line,#2c3a39);background:transparent;color:var(--txt);border-radius:99px;padding:6px 12px;font-size:13px;cursor:pointer} .vd-sin.on{background:#3a1717;border-color:#7a2a2a;color:#ffb4b4} .vd-ajuste{border-color:#11484a;background:#0a2628;margin-top:12px} .vd-g{display:grid;grid-template-columns:1fr 1fr;gap:10px} .vd-g label,.vd-l{display:block;font-size:12.5px;color:var(--mut)} .vd-l{margin-top:10px}
+  .vd-rec{color:var(--acc-txt,#7fd6d7);font-size:13px;font-weight:600} .vd-auto{margin-top:12px;padding-top:12px;border-top:1px solid var(--line,#24302f)} .vd-sin{border:1px solid var(--line,#2c3a39);background:transparent;color:var(--txt);border-radius:99px;padding:6px 12px;font-size:13px;cursor:pointer} .vd-sin.on{background:#3a1717;border-color:#7a2a2a;color:#ffb4b4} .vd-ajuste{border-color:#11484a;background:#0a2628;margin-top:12px} .vd-g{display:grid;grid-template-columns:1fr 1fr;gap:10px} .vd-g label,.vd-l{display:block;font-size:12.5px;color:var(--mut)} .vd-l{margin-top:10px}
   .vd-g .txt,.vd-l .txt{margin-top:4px;width:100%;box-sizing:border-box}
   .vd-res{margin-top:12px;padding:10px 12px;border-radius:12px;background:#0a2628;color:#a9e2e3;font-size:14px}
   .vd-n button{flex:1} .vd-com{padding:10px 0;border-top:1px solid var(--line)} .vd-com:first-of-type{border-top:0}
@@ -796,13 +796,34 @@ const PLATOS = {
 const SIN_OPC = [["carne", "Carne"], ["pescado", "Pescado"], ["huevo", "Huevo"], ["lacteo", "Lácteos"], ["gluten", "Gluten"], ["fsecos", "Frutos secos"]];
 const tipoComida = nm => /desayuno/i.test(nm) ? "desayuno" : /comida/i.test(nm) ? "comida" : /cena/i.test(nm) ? "cena" : "tentempie";
 // Devuelve los alimentos de cada comida. "giro" cambia la combinación para el botón "Otra propuesta".
+// Lo que contiene un alimento, para quitar recetas con lo que no come
+function tagsAlim(n, sg){ const x = normN(n), t = [];
+  if (/pollo|pavo|ternera|cerdo|lomo|jam[oó]n|carne|vacuno|chorizo|pechuga|muslo|brocheta|embuchado|hamburgues|bacon|salchich/.test(x)) t.push("carne");
+  if (/merluza|at[uú]n|salm[oó]n|sardina|melva|bacalao|gamba|langostino|pescado|dorada|lubina|calamar|mejill/.test(x)) t.push("pescado");
+  if (/huevo|clara/.test(x)) t.push("huevo");
+  if (/^l[aá]cteo|^leche/i.test(sg || "") || /leche|queso|yogur|natilla|mousse|mozzarella|cheddar|havarti|batido|k[eé]fir|nata/.test(x)) t.push("lacteo");
+  if (/\bpan\b|pasta|macarr|espagu|tortillas? de trigo|avena|corn flakes|picos|brioche|muesli|cereal|harina|cusc[uú]s|galleta/.test(x)) t.push("gluten");
+  if (/cacahuete|nuez|nueces|pistacho|almendra|anacardo|avellana/.test(x)) t.push("fsecos");
+  return t; }
+const momentoDe = m => { const x = normN(m), r = [];
+  if (/desayuno/.test(x)) r.push("desayuno"); if (/merienda|media|tentempi|snack|almuerzo/.test(x)) r.push("tentempie");
+  if (/comida/.test(x)) r.push("comida"); if (/cena/.test(x)) r.push("cena"); return r; };
 function vwAuto(n, sin, giro){
   const bd = (DIE && DIE.bd || []).filter(f => f.ok !== false), usados = {}, protDia = [];
+  const recs = (DIE && DIE.recetas || []).map(r => {
+    const it = r.it.map(i => Object.assign({}, i, { f: bd.find(f => normN(f.n) === normN(i.n)) }));
+    if (it.some(i => !i.f)) return null;
+    const tags = [].concat(...it.map(i => tagsAlim(i.f.n, i.f.sg)));
+    return { n: r.n, prep: r.prep, mom: momentoDe(r.m), it: it, tags: tags };
+  }).filter(Boolean);
   const busca = re => (bd.find(f => re.test(normN(f.n))) || {}).n;
   return NOMBRES_COM[n].map((nm, i) => {
-    const tipo = tipoComida(nm), lista = PLATOS[tipo];
-    const validos = lista.map(pl => pl.filter(([, c]) => sin.indexOf(c) < 0 || !c).length === pl.length ? pl.map(([re]) => busca(re)).filter(Boolean) : null)
-      .filter(a => a && a.length >= 2);
+    const tipo = tipoComida(nm);
+    // Si Aitor tiene recetas para este momento, se usan sus recetas; si no, los platos básicos
+    const rTipo = recs.filter(r => r.mom.indexOf(tipo) >= 0 && !r.tags.some(t => sin.indexOf(t) >= 0));
+    const validos = rTipo.length
+      ? rTipo.map(r => Object.assign(r.it.map(i => i.f.n), { rec: { n: r.n, prep: r.prep }, fij: r.it.reduce((o, i) => { if (i.fijo && i.g > 0) o[i.f.n] = i.g; return o; }, {}) }))
+      : PLATOS[tipo].map(pl => pl.filter(([, c]) => sin.indexOf(c) < 0 || !c).length === pl.length ? pl.map(([re]) => busca(re)).filter(Boolean) : null).filter(a => a && a.length >= 2);
     if (!validos.length) return [];
     usados[tipo] = (usados[tipo] || 0) + 1;
     const ini = giro + usados[tipo] - 1 + (tipo === "tentempie" ? i : 0);
@@ -840,6 +861,7 @@ function vipPropuesta(){
   const ev = evalPeso((BASC || []).filter(x => x.peso > 0), nutriDatos().obj);
   return ev && ev.kcal ? ev : null;
 }
+const vwDesc = i => { const r = (VW.rec || [])[i]; return r ? r.n + (r.prep ? ". " + r.prep : "") : ""; };
 function vwLeer(){ let w = null; try { w = (JSON.parse(localStorage.getItem(VKEY)) || {})[CODE] || null; } catch(e){} w = w || { n: 4, al: [[], [], [], []] }; while (w.al.length < w.n) w.al.push([]); return w; }
 function vwGuardar(){ try { const c = JSON.parse(localStorage.getItem(VKEY)) || {}; c[CODE] = VW; localStorage.setItem(VKEY, JSON.stringify(c)); } catch(e){} }
 // Inicio para clientes de solo dieta (sin rutina): lo que toca comer ahora + su peso en mini + aviso de pesarse
@@ -900,12 +922,13 @@ function vwNnls(vars, t, base){
 const vwTope = f => f.sg === "Grasa" ? (f.k > 500 ? 30 : 150) : (f.sg === "Leche" || f.sg === "Lácteo") ? 400 : 300;
 const vwRed = g => g < 3 ? 0 : (g < 30 ? Math.round(g) : Math.round(g / 5) * 5);
 const vwErr = (r, t) => [["k", 1.5, Math.max(t.k, 50)], ["p", 1.5, Math.max(t.p, 5)], ["g", 1, Math.max(t.g, 5)], ["h", 1, Math.max(t.h, 5)]].reduce((s, [m, w, T]) => s + w * Math.pow((r[m] - t[m]) / T, 2), 0);
-function vwResolver(nombres, t){
-  const tot = { k: 0, g: 0, h: 0, p: 0 }, out = [];
+function vwResolver(nombres, t, fijos){
+  const tot = { k: 0, g: 0, h: 0, p: 0 }, out = [], fj = fijos || {};
   const suma = (b, f, g) => { b.k += f.k * g / 100; b.g += f.g * g / 100; b.h += f.h * g / 100; b.p += f.p * g / 100; };
   const fs = nombres.map(n => bdF(n)).filter(Boolean);
-  fs.filter(f => f.sg === "Verdura").forEach(f => { suma(tot, f, 100); out.push({ n: f.n, g: 100 }); });
-  const vars = fs.filter(f => f.sg !== "Verdura");
+  // Fijos de la receta (cantidad que pone Aitor) y verduras sin cantidad (100 g): no se cuadran, pero cuentan
+  fs.filter(f => fj[f.n] > 0 || f.sg === "Verdura").forEach(f => { const g = fj[f.n] > 0 ? fj[f.n] : 100; suma(tot, f, g); out.push({ n: f.n, g: g }); });
+  const vars = fs.filter(f => !(fj[f.n] > 0) && f.sg !== "Verdura");
   if (vars.length) {
     const uds = vars.filter(f => f.ud > 0), lib = vars.filter(f => !(f.ud > 0)), x0 = vwNnls(vars, t, tot);
     const ops = uds.map(f => { const u = x0[vars.indexOf(f)] * 100 / f.ud; return [...new Set([Math.max(1, Math.floor(u)), Math.max(1, Math.ceil(u))])]; });
@@ -946,7 +969,7 @@ function viewVipDieta(){
     <div class="vd-auto"><div class="mut small" style="margin-bottom:6px">¿No sabes qué poner? Marca lo que <b>no</b> comes y te la monto yo:</div>
     <div class="vd-chips">${SIN_OPC.map(([k, t]) => `<button class="vd-sin ${(VW.sin || []).indexOf(k) >= 0 ? "on" : ""}" data-vdsin="${k}">${(VW.sin || []).indexOf(k) >= 0 ? "🚫 " : ""}${t}</button>`).join("")}</div>
     <button class="btn ghost" id="vdAuto" style="margin-top:10px">✨ ${VW.al.slice(0, VW.n).some(a => a.length) ? "Otra propuesta" : "Hazme la dieta"}</button></div>
-    ${noms.map((nm, i) => `<div class="vd-com"><b>${nm}</b><div class="vd-chips">${(VW.al[i] || []).map((n, j) => `<button class="vd-chip" data-vdx="${i},${j}">${esc(nomPartes(n)[0])} <span aria-hidden="true">×</span></button>`).join("")}<button class="vd-add" data-vda="${i}">+ Añadir</button></div></div>`).join("")}</div>
+    ${noms.map((nm, i) => `<div class="vd-com"><b>${nm}</b>${VW.rec && VW.rec[i] ? ` <span class="vd-rec">🍽️ ${esc(VW.rec[i].n)}</span>` : ""}<div class="vd-chips">${(VW.al[i] || []).map((n, j) => `<button class="vd-chip" data-vdx="${i},${j}">${esc(nomPartes(n)[0])} <span aria-hidden="true">×</span></button>`).join("")}<button class="vd-add" data-vda="${i}">+ Añadir</button></div></div>`).join("")}</div>
   <button class="btn" id="vdCalc">Calcular mi dieta</button>
   <div id="vdRes">${VW.res ? vwResHTML() : ""}</div>
   </div><div class="dz-sheet sheet-bg" id="vdSheet" hidden></div>`;
@@ -966,7 +989,7 @@ function vwResHTML(){
   const noms = NOMBRES_COM[VW.n], tot = { k: 0, p: 0, h: 0, g: 0 };
   VW.res.forEach(c => ["k", "p", "h", "g"].forEach(m => tot[m] += c.tot[m]));
   return `<h2 style="margin:22px 0 8px">Tu dieta</h2><div class="dz-dia"><div><b>${n0(tot.k)}</b><small>kcal</small></div><div><b>${n0(tot.p)}</b><small>proteína</small></div><div><b>${n0(tot.h)}</b><small>hidratos</small></div><div><b>${n0(tot.g)}</b><small>grasa</small></div></div>
-  ${VW.res.map((c, i) => `<div class="card dz-c"><div class="dz-top"><h2>${c.bien ? "✅" : "⚠️"} ${noms[i]}</h2></div>
+  ${VW.res.map((c, i) => `<div class="card dz-c"><div class="dz-top"><h2>${c.bien ? "✅" : "⚠️"} ${noms[i]}</h2>${VW.rec && VW.rec[i] ? `<small class="dz-sub">${esc(VW.rec[i].n)}</small>` : ""}</div>
     ${c.items.length ? c.items.map(it => { const [a, b] = nomPartes(it.n); return `<div class="dz-it" style="cursor:default"><span class="dz-ico" aria-hidden="true">${icoAlim(it.n, bdF(it.n))}</span><span class="dz-n"><b>${esc(a)}</b>${b ? `<small>${esc(b)}</small>` : ""}</span><span class="dz-g">${cantTxt(it.n, it.g)}</span></div>`; }).join("") : `<div class="mut small">Añade alimentos a esta comida.</div>`}
     <div class="dz-tot">${n0(c.tot.k)} kcal · P ${n0(c.tot.p)} · H ${n0(c.tot.h)} · G ${n0(c.tot.g)}</div>
     ${c.consejo ? `<div class="vd-aviso">${esc(c.consejo)}</div>` : ""}</div>`).join("")}
@@ -992,9 +1015,9 @@ app.addEventListener("click", ev => {
   const r = vipObjetivo(VW), al = VW.al.slice(0, VW.n);
   if (!r || al.some(a => !a.length)) { vwGuardar(); go("vipdieta"); return; }
   const tc = { k: r.kcal / VW.n, p: r.p / VW.n, g: r.g / VW.n, h: r.h / VW.n };
-  VW.res = al.map(a => vwResolver(a, tc)); VW.obj = { g: r.g, h: r.h, p: r.p };
+  VW.res = al.map((a, i) => vwResolver(a, tc, (VW.fij || [])[i])); VW.obj = { g: r.g, h: r.h, p: r.p };
   t.disabled = true; t.textContent = "Ajustando…";
-  const plan = { comidas: VW.res.map((c, i) => ({ nom: NOMBRES_COM[VW.n][i], items: c.items })), obj: VW.obj };
+  const plan = { comidas: VW.res.map((c, i) => ({ nom: NOMBRES_COM[VW.n][i], items: c.items, desc: vwDesc(i) })), obj: VW.obj };
   api("guardarDietaVip", CODE, plan).then(() => { VW.ajF = new Date().toISOString().slice(0, 10); vwGuardar(); toast("Dieta ajustada ✅ Ahora son " + fmt0(r.kcal) + " kcal");
       try { const s = selTodo(); delete s[CODE]; localStorage.setItem(DSEL, JSON.stringify(s)); } catch(e){} DIE = null; DIE_CODE = ""; viewVipHome(); })
     .catch(e => { VW.ajuste = antes; vwGuardar(); t.disabled = false; t.textContent = "Ajustar mi dieta"; toast(e.red ? "Sin conexión: inténtalo con internet" : e.message, true); });
@@ -1004,24 +1027,25 @@ app.addEventListener("click", ev => {
   const t = ev.target.closest("button"); if (!t || !VW) return;
   const repinta = () => { const y = window.scrollY; vwGuardar(); viewVipDieta(); window.scrollTo(0, y); };
   if (t.dataset.vdn) { VW.n = +t.dataset.vdn; while (VW.al.length < VW.n) VW.al.push([]); VW.res = null; repinta(); return; }
-  if (t.dataset.vdx) { const [i, j] = t.dataset.vdx.split(",").map(Number); VW.al[i].splice(j, 1); VW.res = null; repinta(); return; }
+  if (t.dataset.vdx) { const [i, j] = t.dataset.vdx.split(",").map(Number); VW.al[i].splice(j, 1); if (!VW.al[i].length && VW.rec) VW.rec[i] = null; VW.res = null; repinta(); return; }
   if (t.dataset.vda) { vwBuscar(+t.dataset.vda, ""); return; }
   if (t.dataset.vdadd && VW_BUSCA >= 0) { const i = VW_BUSCA; if (VW.al[i].indexOf(t.dataset.vdadd) < 0) VW.al[i].push(t.dataset.vdadd); VW.res = null; vwCerrar(); repinta(); return; }
   if (t.dataset.vdsin) { const k = t.dataset.vdsin; VW.sin = VW.sin || []; const i = VW.sin.indexOf(k); if (i >= 0) VW.sin.splice(i, 1); else VW.sin.push(k); repinta(); return; }
   if (t.id === "vdAuto") { if (!vipObjetivo(VW)) { toast("Rellena primero tus datos", true); return; }
     VW.giro = (VW.giro || 0) + (VW.al.slice(0, VW.n).some(a => a.length) ? 1 : 0);
     const al = vwAuto(VW.n, VW.sin || [], VW.giro);
-    al.forEach((a, i) => { VW.al[i] = a.slice(); });
+    VW.fij = []; VW.rec = [];
+    al.forEach((a, i) => { VW.al[i] = a.slice(); VW.fij[i] = a.fij || {}; VW.rec[i] = a.rec || null; });
     if (al.some(a => !a.length)) { VW.res = null; vwGuardar(); viewVipDieta(); toast("Con todo eso quitado no me salen platos para alguna comida: añádela tú a mano.", true); return; }
     VW.res = null; vwGuardar(); viewVipDieta(); const b = document.getElementById("vdCalc"); if (b) b.click(); return; }
   if (t.dataset.vdreset) { VW.ajuste = 0; VW.res = null; repinta(); return; }
   if (t.id === "vdCalc") { const r = vipObjetivo(VW); if (!r) { toast("Rellena primero tus datos", true); return; }
     const al = VW.al.slice(0, VW.n); if (al.some(a => !a.length)) { toast("Añade alimentos a todas las comidas", true); return; }
     const tc = { k: r.kcal / VW.n, p: r.p / VW.n, g: r.g / VW.n, h: r.h / VW.n };
-    VW.res = al.map(a => vwResolver(a, tc)); VW.obj = { g: r.g, h: r.h, p: r.p }; vwGuardar();
+    VW.res = al.map((a, i) => vwResolver(a, tc, (VW.fij || [])[i])); VW.obj = { g: r.g, h: r.h, p: r.p }; vwGuardar();
     document.getElementById("vdRes").innerHTML = vwResHTML(); document.getElementById("vdRes").scrollIntoView({ behavior: "smooth", block: "start" }); return; }
   if (t.id === "vdSave" && VW.res) { t.disabled = true; t.textContent = "Guardando…";
-    const plan = { comidas: VW.res.map((c, i) => ({ nom: NOMBRES_COM[VW.n][i], items: c.items })), obj: VW.obj };
+    const plan = { comidas: VW.res.map((c, i) => ({ nom: NOMBRES_COM[VW.n][i], items: c.items, desc: vwDesc(i) })), obj: VW.obj };
     api("guardarDietaVip", CODE, plan).then(() => { toast("¡Dieta guardada! 💪"); try { const s = selTodo(); delete s[CODE]; localStorage.setItem(DSEL, JSON.stringify(s)); } catch(e){} DIE = null; DIE_CODE = ""; go("nutricion"); })
       .catch(e => { t.disabled = false; t.textContent = "Guardar como mi dieta"; toast(e.red ? "Sin conexión: inténtalo con internet" : e.message, true); }); return; }
 });
