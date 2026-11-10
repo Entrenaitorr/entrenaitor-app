@@ -317,7 +317,7 @@
   .coachbar button{border:1px solid #6b5200;background:#4d3b00;color:#fff;border-radius:999px;padding:6px 12px;font:600 13px Inter;cursor:pointer}
   body.coach #app input, body.coach #app textarea, body.coach #app select.txt:not(#x), body.coach .chk, body.coach .scale button, body.coach .dm-b{pointer-events:none}
   body.coach #app input, body.coach #app textarea{opacity:.85}
-  body.coach #fin, body.coach #saveDoms, body.coach #saveCheckin, body.coach .cta-checkin, body.coach [data-go="checkin"], body.coach #tabWa, body.coach .install, body.coach #app .wa, body.coach #sync{display:none!important}
+  body.coach #fin, body.coach #saveDoms, body.coach #saveCheckin, body.coach .cta-checkin[data-go="checkin"], body.coach [data-go="checkin"], body.coach #salir, body.coach #apGuardar, body.coach #ap-fotos-box, body.coach #tabWa, body.coach .install, body.coach #app .wa, body.coach #sync{display:none!important}
   body.coach .tabbar{grid-template-columns:repeat(3,minmax(0,1fr))}
   .cl{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin:8px 0;color:var(--txt);cursor:pointer;font:inherit}
   .cl .av{flex:0 0 40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#0a2628;color:var(--acc-txt);font:700 17px "Barlow Condensed",sans-serif}
@@ -908,7 +908,7 @@ document.addEventListener("click", ev => { const t = ev.target.closest("[data-vi
   try { localStorage.setItem(VBKEY(), "1"); } catch(e) {} const c = t.closest(".vip-card"); if (c) c.remove(); });
 // ---- Cuestionario de dieta: lo que Aitor necesita para hacer la dieta; le llega al panel ----
 function cuestCard(){
-  if (LECTURA()) return DIE && DIE.cuest ? `<div class="card" style="line-height:1.55">📝 Cuestionario rellenado el ${esc(fechaCorta(DIE.cuest.fecha))}.</div>` : "";
+  if (LECTURA()) return `<div class="card" style="line-height:1.55">${DIE && DIE.cuest ? `📝 Rellenó el cuestionario de dieta el <b>${esc(fechaCorta(DIE.cuest.fecha))}</b>. Sus respuestas están en tu panel, pestaña <b>Cuestionarios dieta</b>.` : `📝 <b>Aún no ha rellenado el cuestionario de dieta.</b> A él le sale el botón "Rellena tu cuestionario" en su Inicio y en Mi dieta.`}</div>`;
   if (DIE && DIE.cuest) return `<div class="card" style="line-height:1.55">✅ <b>Cuestionario enviado</b> el ${esc(fechaCorta(DIE.cuest.fecha))}. Aitor está preparando tu dieta y te aparecerá aquí en cuanto esté lista.<button class="link" data-go="cuestionario" style="display:block;margin-top:8px;padding:0">Editar mis respuestas</button></div>`;
   return `<button class="cta-checkin" data-go="cuestionario"><span style="font-size:26px">📝</span><span><b>Rellena tu cuestionario</b><small>2 minutos: lo que necesita Aitor para hacerte la dieta.</small></span></button>`;
 }
@@ -1888,7 +1888,7 @@ function ibGuardar(btn){
 /* ========== Vistas ========== */
 function viewCalcPublica(){
   viewNutri();
-  const b = app.querySelector(".back"); if (b) { b.removeAttribute("data-go"); b.id = "calcEntrar"; b.textContent = "← Entrar a la app"; }
+  const b = app.querySelector(".back"); if (b) { b.removeAttribute("data-go"); b.id = "calcEntrar"; b.textContent = "← Volver a la web"; }
   const sub = app.querySelector(".brand + .mut"); if (sub) sub.textContent = "Calcula gratis tus calorías y macros en 1 minuto. Sin registrarte.";
 }
 function viewLogin(msg){
@@ -2099,7 +2099,7 @@ app.addEventListener("click", ev=>{
     api("invPonerPin", CODE, pin).then(() => { INVITADO.sinPin = false; guardarInv(); toast("PIN guardado"); route(); }).catch(e => { t.disabled = false; toast(e.red ? "Sin conexión" : e.message, true); });
     return; }
   if (t.id === "invVolver") { document.body.classList.remove("onb"); CODE = ""; store.del(); viewLogin(); return; }
-  if (t.id === "calcEntrar") { viewLogin(); return; }
+  if (t.id === "calcEntrar") { location.href = "https://entrenaitorr.github.io/"; return; }
   if (t.id === "invSalir") { salirInvitado(); viewLogin(); return; }
   if (t.dataset.ses && INVITADO) { const x = (INVITADO.sesiones || []).find(z => z.id === t.dataset.ses); if (x) { guardarBorrador(nuevoBorrador(x)); go("inv-entreno"); } return; }
   if (t.dataset.empezar) { empezarDia(t.dataset.empezar); return; }
