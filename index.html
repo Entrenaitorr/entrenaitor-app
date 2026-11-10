@@ -160,7 +160,7 @@
 .vip-btn{background:linear-gradient(135deg,#f7e08a,#d4a531)!important;color:#2a1d00!important;font-weight:800}
 .vip-cta{border-color:rgba(212,165,49,.6)!important;background:linear-gradient(160deg,#2a2210,#141816)!important}
 .vip-mini{font-style:normal;font-size:10px;font-weight:800;letter-spacing:.06em;color:#2a1d00;background:#e3bc4f;border-radius:6px;padding:1px 6px;margin-left:6px;vertical-align:2px}
-.vd-rec{color:var(--acc-txt,#7fd6d7);font-size:13px;font-weight:600} .vd-auto{margin-top:12px;padding-top:12px;border-top:1px solid var(--line,#24302f)} .vd-sin{border:1px solid var(--line,#2c3a39);background:transparent;color:var(--txt);border-radius:99px;padding:6px 12px;font-size:13px;cursor:pointer} .vd-sin.on{background:#3a1717;border-color:#7a2a2a;color:#ffb4b4} .vd-ajuste{border-color:#11484a;background:#0a2628;margin-top:12px} .vd-g{display:grid;grid-template-columns:1fr 1fr;gap:10px} .vd-g label,.vd-l{display:block;font-size:12.5px;color:var(--mut)} .vd-l{margin-top:10px}
+.cu-f label{display:block;margin-top:12px;font-size:14px;color:var(--mut,#9fb0b0)} .cu-f label .txt{margin-top:6px;width:100%;color:var(--txt)} .cu-f textarea.txt{resize:vertical;font:inherit} .cu-f .vd-g label{margin-top:12px} .vd-rec{color:var(--acc-txt,#7fd6d7);font-size:13px;font-weight:600} .vd-auto{margin-top:12px;padding-top:12px;border-top:1px solid var(--line,#24302f)} .vd-sin{border:1px solid var(--line,#2c3a39);background:transparent;color:var(--txt);border-radius:99px;padding:6px 12px;font-size:13px;cursor:pointer} .vd-sin.on{background:#3a1717;border-color:#7a2a2a;color:#ffb4b4} .vd-ajuste{border-color:#11484a;background:#0a2628;margin-top:12px} .vd-g{display:grid;grid-template-columns:1fr 1fr;gap:10px} .vd-g label,.vd-l{display:block;font-size:12.5px;color:var(--mut)} .vd-l{margin-top:10px}
   .vd-g .txt,.vd-l .txt{margin-top:4px;width:100%;box-sizing:border-box}
   .vd-res{margin-top:12px;padding:10px 12px;border-radius:12px;background:#0a2628;color:#a9e2e3;font-size:14px}
   .vd-n button{flex:1} .vd-com{padding:10px 0;border-top:1px solid var(--line)} .vd-com:first-of-type{border-top:0}
@@ -715,7 +715,7 @@ function pintarDieta(){
   let h = `<button class="back" data-go="inicio">← Volver</button><div class="brand"><h1>Mi dieta</h1>${vipBadge() || `<img src="icons/nutricion.svg" alt="" style="width:56px;height:56px">`}</div>`;
   if (!DIE) { app.innerHTML = h + (DIE_ERR ? `<div class="err-box">${esc(DIE_ERR)}</div>` : `<div class="card" style="text-align:center;padding:30px"><div class="spin"></div></div>`); return; }
   const vipBtn = esVip() && !LECTURA() ? `<button class="cta-checkin vip-cta" data-go="vipdieta"><span style="font-size:26px">✦</span><span><b>Crear mi dieta <em class="vip-mini">VIP</em></b><small>Elige lo que te apetece y la app calcula los gramos.</small></span></button>` : "";
-  if (DIE.bloqueada || DIE.sinDieta || !(DIE.comidas || []).length) { app.innerHTML = h + (vipBtn || `<div class="card" style="line-height:1.55">Aitor aún está preparando tu dieta. En cuanto la tenga lista te aparecerá aquí.</div>`); return; }
+  if (DIE.bloqueada || DIE.sinDieta || !(DIE.comidas || []).length) { app.innerHTML = h + (vipBtn || (DIE.bloqueada ? "" : cuestCard()) || `<div class="card" style="line-height:1.55">Aitor aún está preparando tu dieta. En cuanto la tenga lista te aparecerá aquí.</div>`); return; }
   h += vipBtn;
   const s = selLeer(), tot = { k: 0, g: 0, p: 0, h: 0 }, ahora = comidaAhora(DIE.comidas.length);
   let cuerpo = "";
@@ -906,6 +906,45 @@ function vipBienvenida(){
 }
 document.addEventListener("click", ev => { const t = ev.target.closest("[data-vipok]"); if (!t) return;
   try { localStorage.setItem(VBKEY(), "1"); } catch(e) {} const c = t.closest(".vip-card"); if (c) c.remove(); });
+// ---- Cuestionario de dieta: lo que Aitor necesita para hacer la dieta; le llega al panel ----
+function cuestCard(){
+  if (LECTURA()) return DIE && DIE.cuest ? `<div class="card" style="line-height:1.55">📝 Cuestionario rellenado el ${esc(fechaCorta(DIE.cuest.fecha))}.</div>` : "";
+  if (DIE && DIE.cuest) return `<div class="card" style="line-height:1.55">✅ <b>Cuestionario enviado</b> el ${esc(fechaCorta(DIE.cuest.fecha))}. Aitor está preparando tu dieta y te aparecerá aquí en cuanto esté lista.<button class="link" data-go="cuestionario" style="display:block;margin-top:8px;padding:0">Editar mis respuestas</button></div>`;
+  return `<button class="cta-checkin" data-go="cuestionario"><span style="font-size:26px">📝</span><span><b>Rellena tu cuestionario</b><small>2 minutos: lo que necesita Aitor para hacerte la dieta.</small></span></button>`;
+}
+const fechaCorta = f => { try { return new Date(String(f).slice(0, 10) + "T12:00:00").toLocaleDateString("es-ES", { day: "numeric", month: "long" }); } catch(e) { return f; } };
+function viewCuestionario(){
+  const c = (DIE && DIE.cuest) || {}, nd = nutriDatos();
+  const v = k => esc(c[k] != null && c[k] !== "" ? c[k] : (k === "edad" ? nd.edad : k === "altura" ? nd.altura : k === "peso" ? nd.peso : "") || "");
+  const sel = (id, ops, val) => `<select class="txt" id="${id}">${ops.map(([k, t]) => `<option value="${k}" ${String(k) === String(val) ? "selected" : ""}>${esc(t)}</option>`).join("")}</select>`;
+  const area = (id, ph) => `<textarea class="txt" id="cu-${id}" rows="2" placeholder="${ph}">${v(id)}</textarea>`;
+  app.innerHTML = `<button class="back" data-go="nutricion">← Volver</button><h1>Tu cuestionario</h1>
+    <p class="mut" style="line-height:1.5;margin-top:-4px">Con esto Aitor te prepara la dieta. Responde como comes ahora de verdad, sin adornarlo 😉</p>
+    <div class="card cu-f">
+      <label>Tu objetivo${sel("cu-obj", [["", "Elige tu objetivo…"], ["grasa", "Perder grasa"], ["masa", "Ganar músculo"], ["mant", "Mantenerme y comer mejor"]], c.obj || "")}</label>
+      <div class="vd-g"><label>Edad<input class="txt" id="cu-edad" inputmode="numeric" value="${v("edad")}"></label><label>Altura (cm)<input class="txt" id="cu-altura" inputmode="numeric" value="${v("altura")}"></label></div>
+      <label>Peso (kg)<input class="txt" id="cu-peso" inputmode="decimal" placeholder="En ayunas, si puede ser" value="${v("peso")}"></label>
+      <label>¿Cuántas comidas quieres hacer al día?${sel("cu-comidas", [["3", "3"], ["4", "4"], ["5", "5"]], c.comidas || "4")}</label>
+      <label>¿A qué horas sueles comer?${area("horarios", "Ej. desayuno 8:00, comida 14:30, cena 21:30")}</label>
+      <label>¿Qué días y a qué hora entrenas?${area("entreno", "Ej. lunes, miércoles y viernes a las 19:00")}</label>
+      <label>¿Qué no comes o no te gusta?${area("nocome", "Ej. pescado, brócoli…")}</label>
+      <label>¿Alergias o intolerancias?${area("alergias", "Ej. lactosa. Si no tienes, déjalo en blanco")}</label>
+      <label>¿Algo más que deba saber?${area("otros", "Horarios de trabajo, si comes fuera, lo que te cuesta más…")}</label>
+      <div class="field-err" id="cu-err" hidden></div>
+      <button class="btn" id="cuGuardar" style="margin-top:12px">Enviar a Aitor</button>
+    </div>`;
+}
+document.addEventListener("click", ev => { const t = ev.target.closest("#cuGuardar"); if (!t) return;
+  const g = id => (document.getElementById("cu-" + id) || {}).value || "", num = id => parseFloat(String(g(id)).replace(",", "."));
+  const err = document.getElementById("cu-err");
+  const fallo = !g("obj") ? "Elige tu objetivo." : !(num("edad") >= 14 && num("edad") <= 90) ? "Pon tu edad." : !(num("altura") >= 120 && num("altura") <= 230) ? "Pon tu altura en cm, por ejemplo 175." : !(num("peso") >= 30 && num("peso") <= 300) ? "Pon tu peso en kg, por ejemplo 80,5." : !g("horarios").trim() ? "Cuéntame a qué horas sueles comer." : "";
+  if (fallo) { err.textContent = fallo; err.hidden = false; return; }
+  const d = { obj: g("obj"), edad: num("edad"), altura: num("altura"), peso: num("peso"), comidas: g("comidas"), horarios: g("horarios"), entreno: g("entreno"), nocome: g("nocome"), alergias: g("alergias"), otros: g("otros") };
+  t.disabled = true; t.textContent = "Enviando…";
+  api("guardarCuestionario", CODE, d).then(r => { if (DIE) { DIE.cuest = r; try { const c = JSON.parse(localStorage.getItem(DKEY)) || {}; if (c[CODE]) { c[CODE].cuest = r; localStorage.setItem(DKEY, JSON.stringify(c)); } } catch(e) {} }
+      toast("¡Enviado! Aitor ya tiene tus datos ✅"); go("nutricion"); })
+    .catch(e => { t.disabled = false; t.textContent = "Enviar a Aitor"; err.textContent = e.red ? "Sin conexión: inténtalo con internet." : e.message; err.hidden = false; });
+});
 function viewVipHome(){
   const nom = nombreCliente();
   if (DIE_CODE !== CODE) { DIE = dieMapa(dieLeer()); DIE_CODE = CODE; }
@@ -919,7 +958,7 @@ function viewVipHome(){
       ${items.map(it => { const [a, b] = nomPartes(it.n); return `<div class="dz-it" style="cursor:default"><span class="dz-ico" aria-hidden="true">${icoAlim(it.n, bdF(it.n))}</span><span class="dz-n"><b>${esc(a)}</b>${b ? `<small>${esc(b)}</small>` : ""}</span><span class="dz-g">${cantTxt(it.n, it.g)}</span></div>`; }).join("")}
       <div class="dz-tot">${n0(mt.k)} kcal · P ${n0(mt.p)} · H ${n0(mt.h)} · G ${n0(mt.g)}</div>
       <button class="btn" data-go="nutricion" style="margin-top:10px">Ver mi dieta completa</button></div>`;
-  } else h += `<button class="cta-checkin" data-go="nutricion" style="margin-top:12px"><span style="font-size:26px">🍽️</span><span><b>Mi dieta</b><small>${DIE ? "Aitor aún está preparando tu dieta." : "Cargando tu dieta…"}</small></span></button>`;
+  } else h += `<button class="cta-checkin" data-go="nutricion" style="margin-top:12px"><span style="font-size:26px">🍽️</span><span><b>Mi dieta</b><small>${!DIE ? "Cargando tu dieta…" : !DIE.cuest && !esVip() ? "📝 Rellena tu cuestionario para que Aitor te haga la dieta." : "Aitor aún está preparando tu dieta."}</small></span></button>`;
   const pr = vipPropuesta();
   if (pr) h += `<div class="card vd-ajuste vip-card"><b>${pr.kcal < 0 ? "📉" : "📈"} ${esc(pr.txt)}</b><p class="mut small" style="line-height:1.5;margin:6px 0 10px">Te propongo ${pr.kcal < 0 ? "quitar" : "añadir"} ${Math.abs(pr.kcal)} kcal a tu dieta, sobre todo en hidratos. Recalculo tus gramos y queda guardada.</p><button class="btn vip-btn" data-vadj="${pr.kcal}">Ajustar mi dieta</button></div>`;
   h += pesoMiniHTML();
@@ -1979,6 +2018,7 @@ function route(){
   const hsh = location.hash.replace("#",""); let m;
   document.body.classList.toggle("vipsr", !!D.sinRutina);
   if (hsh === "vipdieta") viewVipDieta();
+  else if (hsh === "cuestionario" && (D.nutricion || D.sinRutina)) viewCuestionario();
   else if (D.sinRutina) { if (hsh === "nutricion") viewDieta(); else if (hsh === "cuerpo" || hsh === "progreso") viewCuerpo(); else viewVipHome(); }
   else if ((m = hsh.match(/^dia-(\d+)$/))) viewDay(+m[1]);
   else if ((m = hsh.match(/^agujetas-(\d+)$/))) viewDoms(+m[1]);
