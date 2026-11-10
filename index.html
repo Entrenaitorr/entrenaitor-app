@@ -291,6 +291,10 @@
   .refresco{position:fixed;top:calc(10px + env(safe-area-inset-top));right:12px;z-index:30;display:flex;align-items:center;gap:7px;background:#121a1d;border:1px solid var(--line);color:var(--mut);font-size:12px;padding:6px 11px;border-radius:999px;opacity:0;transform:translateY(-6px);transition:opacity .2s,transform .2s;pointer-events:none}
   .refresco.on{opacity:1;transform:none}
   body.onb .tabbar{display:none}
+  .tabbar.t5{grid-template-columns:repeat(5,minmax(0,1fr))} .tabbar [hidden]{display:none!important}
+  .pill-ico.av{background-size:cover!important;background-position:center!important;border-radius:50%!important;width:30px!important;height:30px!important;padding:0!important;margin-left:auto;margin-right:auto;box-shadow:0 0 0 2px #2b3a41} .tab.on .pill-ico.av{box-shadow:0 0 0 2px #3fc3c5} .pill-ico.av svg{opacity:0}
+  .pf-av{width:96px;height:96px;border-radius:50%;margin:6px auto 10px;background:#18252a center/cover no-repeat;border:2px solid #2b3a41;display:flex;align-items:center;justify-content:center;font-size:38px;color:#7fd6d7;cursor:pointer}
+  .pf-dl{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:14px;margin:6px 0 12px} .pf-dl dt{color:var(--mut,#9fb0b0)} .pf-dl dd{margin:0}
   .onb-wrap{min-height:calc(100vh - 60px);display:flex;flex-direction:column;justify-content:center;padding:20px 0}
   .onb-ico{width:84px;height:84px;border-radius:24px;background:#0a2628;border:1px solid #11484a;display:flex;align-items:center;justify-content:center;color:var(--acc-txt);margin:0 0 22px}
   .onb-ico svg{width:42px;height:42px}
@@ -382,6 +386,7 @@
   <button class="tab" data-tab="inicio"><span class="pill-ico"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 7v10M18 7v10M3 10v4M21 10v4M6 12h12"/></svg></span>Entrenos</button>
   <button class="tab" data-tab="progreso"><span class="pill-ico"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l5-5 4 3 8-8"/><path d="M15 7h5v5"/></svg></span>Progreso</button>
   <button class="tab" data-tab="nutricion"><span class="pill-ico"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7.5c-1.6-1.3-5.5-1.6-6.8 1.9-1.2 3.3.6 8.4 3.3 10.6 1.3 1 2.3.7 3.5.2 1.2.5 2.2.8 3.5-.2 2.7-2.2 4.5-7.3 3.3-10.6-1.3-3.5-5.2-3.2-6.8-1.9z"/><path d="M12 7.5c0-2 .8-3.6 2.6-4.5"/></svg></span>Nutrición</button>
+  <button class="tab" data-tab="perfil" id="tabPerfil"><span class="pill-ico" id="tabPerfilIco"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8.5" r="3.8"/><path d="M4.5 20c1.2-3.6 4-5.4 7.5-5.4s6.3 1.8 7.5 5.4"/></svg></span>Perfil</button>
   <a class="tab" id="tabWa" href="#" target="_blank" rel="noopener" aria-label="Chat con Aitor por WhatsApp"><span class="pill-ico"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 20.5l1.3-4.4A8.5 8.5 0 1 1 8 19.3z"/><path d="M9 8.6c0 3.4 2.9 6.4 6.4 6.4l1.1-1.3-1.8-1-1 .8a4.6 4.6 0 0 1-2.2-2.2l.8-1-1-1.8z" fill="currentColor" stroke-width="1.2"/></svg></span>Chat</a>
 </nav>
 
@@ -918,7 +923,7 @@ function viewCuestionario(){
   const v = k => esc(c[k] != null && c[k] !== "" ? c[k] : (k === "edad" ? nd.edad : k === "altura" ? nd.altura : k === "peso" ? nd.peso : "") || "");
   const sel = (id, ops, val) => `<select class="txt" id="${id}">${ops.map(([k, t]) => `<option value="${k}" ${String(k) === String(val) ? "selected" : ""}>${esc(t)}</option>`).join("")}</select>`;
   const area = (id, ph) => `<textarea class="txt" id="cu-${id}" rows="2" placeholder="${ph}">${v(id)}</textarea>`;
-  app.innerHTML = `<button class="back" data-go="nutricion">← Volver</button><h1>Tu cuestionario</h1>
+  app.innerHTML = `<button class="back" data-go="${CU_VOLVER}">← Volver</button><h1>Tu cuestionario</h1>
     <p class="mut" style="line-height:1.5;margin-top:-4px">Con esto Aitor te prepara la dieta. Responde como comes ahora de verdad, sin adornarlo 😉</p>
     <div class="card cu-f">
       <label>Tu objetivo${sel("cu-obj", [["", "Elige tu objetivo…"], ["grasa", "Perder grasa"], ["masa", "Ganar músculo"], ["mant", "Mantenerme y comer mejor"]], c.obj || "")}</label>
@@ -942,7 +947,7 @@ document.addEventListener("click", ev => { const t = ev.target.closest("#cuGuard
   const d = { obj: g("obj"), edad: num("edad"), altura: num("altura"), peso: num("peso"), comidas: g("comidas"), horarios: g("horarios"), entreno: g("entreno"), nocome: g("nocome"), alergias: g("alergias"), otros: g("otros") };
   t.disabled = true; t.textContent = "Enviando…";
   api("guardarCuestionario", CODE, d).then(r => { if (DIE) { DIE.cuest = r; try { const c = JSON.parse(localStorage.getItem(DKEY)) || {}; if (c[CODE]) { c[CODE].cuest = r; localStorage.setItem(DKEY, JSON.stringify(c)); } } catch(e) {} }
-      toast("¡Enviado! Aitor ya tiene tus datos ✅"); go("nutricion"); })
+      toast("¡Enviado! Aitor ya tiene tus datos ✅"); const v = CU_VOLVER; CU_VOLVER = "nutricion"; go(v); })
     .catch(e => { t.disabled = false; t.textContent = "Enviar a Aitor"; err.textContent = e.red ? "Sin conexión: inténtalo con internet." : e.message; err.hidden = false; });
 });
 // Fotos del registro de peso de los clientes solo dieta (mismo sistema que el check-in: van a su ficha)
@@ -953,6 +958,43 @@ document.addEventListener("change", ev => { if (ev.target.id !== "ap-fotos") ret
   const fs = [...ev.target.files].slice(0, 3 - AP_FOTOS.length); ev.target.value = ""; if (!fs.length) return;
   toast("Preparando fotos…"); Promise.all(fs.map(reducirFoto)).then(l => { AP_FOTOS = AP_FOTOS.concat(l).slice(0, 3); apFotosPinta(); }).catch(e => toast(e.message, true)); });
 document.addEventListener("click", ev => { const t = ev.target.closest("[data-apquita]"); if (!t) return; AP_FOTOS.splice(+t.dataset.apquita, 1); apFotosPinta(); });
+// ---- Mi perfil: foto (solo en su móvil), sus datos para la dieta, sugerencias y cerrar sesión ----
+const AVKEY = () => "entrenaitor_avatar_" + CODE;
+const avatarLeer = () => { try { return localStorage.getItem(AVKEY()) || ""; } catch(e) { return ""; } };
+let CU_VOLVER = "nutricion";
+function viewPerfil(){
+  const av = avatarLeer(), nutri = D && (D.nutricion || D.sinRutina) && !(D.vip);
+  if (nutri && !DIE) { api("dieta", CODE).then(d => { DIE = d && d.comidas ? dieMapa(d) : d; if (DIE) DIE.cuest = d.cuest; dieGuardar(d); DIE_CODE = CODE; if (location.hash === "#perfil") viewPerfil(); }).catch(() => {}); }
+  const c = DIE && DIE.cuest, objT = { grasa: "Perder grasa", masa: "Ganar músculo", mant: "Mantenerme" };
+  let h = `<div class="brand"><h1>Mi perfil</h1>${vipBadge()}</div>
+    <div class="card" style="text-align:center"><label class="pf-av" for="pf-foto" style="${av ? `background-image:url(${av})` : ""}">${av ? "" : "📷"}</label>
+      <div style="display:flex;justify-content:center;gap:16px;align-items:center"><label for="pf-foto" class="link" style="cursor:pointer;display:inline;margin:0">${av ? "Cambiar foto" : "Poner una foto"}</label>${av ? `<button class="link" id="pfQuitaFoto" style="padding:0;display:inline;margin:0">Quitar</button>` : ""}</div>
+      <input type="file" id="pf-foto" accept="image/*" hidden><div class="mut small" style="margin-top:6px">Solo se guarda en tu móvil.</div></div>`;
+  if (nutri) h += `<div class="card" style="margin-top:12px"><b>🥗 Mis datos para la dieta</b>
+      ${!DIE ? `<div class="mut small" style="margin-top:8px">Cargando…</div>` : c ? `<dl class="pf-dl"><dt>Objetivo</dt><dd>${esc(objT[c.obj] || c.obj || "—")}</dd><dt>Edad</dt><dd>${esc(c.edad || "—")}</dd><dt>Altura</dt><dd>${esc(c.altura ? c.altura + " cm" : "—")}</dd><dt>Peso</dt><dd>${esc(c.peso ? String(c.peso).replace(".", ",") + " kg" : "—")}</dd><dt>Comidas</dt><dd>${esc(c.comidas || "—")} al día</dd></dl>
+        <div class="mut small" style="margin-bottom:10px">Actualizado el ${esc(fechaCorta(c.fecha))}. Si cambian tus horarios, tu objetivo o lo que comes, actualízalo.</div>
+        <button class="btn ghost" data-pfcu="1">Actualizar mis datos</button>`
+      : `<p class="mut small" style="line-height:1.5;margin:8px 0 10px">Aún no los has rellenado. Son 2 minutos y con ellos se prepara tu dieta.</p><button class="btn" data-pfcu="1">Rellenar mis datos</button>`}</div>`;
+  h += `<div class="card" style="margin-top:12px"><b>💡 Enviar sugerencia</b>
+      <p class="mut small" style="line-height:1.5;margin:6px 0 8px">¿Algo que mejorarías de la app o del plan? Cualquier idea ayuda.</p>
+      <textarea class="txt" id="pf-sug" rows="3" style="width:100%;font:inherit;resize:vertical" placeholder="Escribe aquí tu sugerencia…"></textarea>
+      <button class="btn" id="pfSug" style="margin-top:10px">Enviar sugerencia</button></div>
+    <button class="btn ghost" id="salir" style="margin-top:16px;width:100%">Cerrar sesión</button>`;
+  app.innerHTML = h;
+}
+document.addEventListener("change", ev => { if (ev.target.id !== "pf-foto") return; const f = ev.target.files[0]; ev.target.value = ""; if (!f) return;
+  reducirFoto(f).then(img => { const c = document.createElement("canvas"), i = new Image(); i.onload = () => { const z = 240, r = Math.max(z / i.width, z / i.height); c.width = c.height = z; const x = c.getContext("2d"); x.drawImage(i, (z - i.width * r) / 2, (z - i.height * r) / 2, i.width * r, i.height * r);
+    try { localStorage.setItem(AVKEY(), c.toDataURL("image/jpeg", .82)); } catch(e) { toast("No se ha podido guardar la foto", true); } viewPerfil(); tabbarUI(); }; i.src = img; }).catch(e => toast(e.message, true)); });
+document.addEventListener("click", ev => {
+  const t = ev.target.closest("#pfQuitaFoto,[data-pfcu],#pfSug"); if (!t) return;
+  if (t.id === "pfQuitaFoto") { try { localStorage.removeItem(AVKEY()); } catch(e) {} viewPerfil(); tabbarUI(); return; }
+  if (t.dataset.pfcu) { CU_VOLVER = "perfil"; go("cuestionario"); return; }
+  const txt = document.getElementById("pf-sug").value.trim();
+  if (txt.length < 3) { toast("Escribe tu sugerencia primero", true); return; }
+  t.disabled = true; t.textContent = "Enviando…";
+  api("enviarSugerencia", CODE, txt).then(() => { document.getElementById("pf-sug").value = ""; toast("¡Gracias! Sugerencia enviada ✅"); t.disabled = false; t.textContent = "Enviar sugerencia"; })
+    .catch(e => { t.disabled = false; t.textContent = "Enviar sugerencia"; toast(e.red ? "Sin conexión: inténtalo con internet" : e.message, true); });
+});
 function viewVipHome(){
   const nom = nombreCliente();
   if (DIE_CODE !== CODE) { DIE = dieMapa(dieLeer()); DIE_CODE = CODE; }
@@ -970,7 +1012,6 @@ function viewVipHome(){
   const pr = vipPropuesta();
   if (pr) h += `<div class="card vd-ajuste vip-card"><b>${pr.kcal < 0 ? "📉" : "📈"} ${esc(pr.txt)}</b><p class="mut small" style="line-height:1.5;margin:6px 0 10px">Te propongo ${pr.kcal < 0 ? "quitar" : "añadir"} ${Math.abs(pr.kcal)} kcal a tu dieta, sobre todo en hidratos. Recalculo tus gramos y queda guardada.</p><button class="btn vip-btn" data-vadj="${pr.kcal}">Ajustar mi dieta</button></div>`;
   h += pesoMiniHTML();
-  h += `<button class="link" id="salir">Cerrar sesión</button>`;
   app.innerHTML = h;
   if (!DIE) api("dieta", CODE).then(d => { DIE = dieMapa(d); dieGuardar(d); if (vhEnInicio()) viewVipHome(); }).catch(() => {});
   if (!viewVipHome.basc) { viewVipHome.basc = 1; refrescarBasc().then(() => { if (vhEnInicio()) viewVipHome(); }).catch(() => {}); }
@@ -1926,7 +1967,6 @@ function viewHome(){
     </button>`;
   });
   if (D.nutricion) { if (!BASC) BASC = leerBasc(); h += pesoMiniHTML(true); }
-  h += `<button class="link" id="salir">Cerrar sesión</button>`;
   app.innerHTML = h;
   const wk = app.querySelector(".weeks"), on = wk && wk.querySelector(".on");
   if (on) wk.scrollLeft = on.offsetLeft - wk.offsetLeft - (wk.clientWidth - on.offsetWidth) / 2;
@@ -2011,7 +2051,9 @@ function tabbarUI(){
   nav.hidden = !D;
   if (!D) return;
   const hsh = location.hash.replace("#","");
-  const actual = hsh === "nutricion" ? hsh : (hsh === "progreso" || hsh === "cuerpo" || hsh === "checkin") ? "progreso" : "inicio";
+  const actual = hsh === "nutricion" ? hsh : hsh === "perfil" ? "perfil" : (hsh === "progreso" || hsh === "cuerpo" || hsh === "checkin") ? "progreso" : "inicio";
+  const conPerfil = !D.invitado && !COACH; document.getElementById("tabPerfil").hidden = !conPerfil; nav.classList.toggle("t5", conPerfil);
+  const av = avatarLeer(), ico = document.getElementById("tabPerfilIco"); if (ico) ico.classList.toggle("av", !!av), ico.style.backgroundImage = av ? `url(${av})` : "";
   const t0 = nav.querySelector('[data-tab="inicio"]'); if (t0 && t0.lastChild) t0.lastChild.textContent = D.sinRutina ? "Inicio" : "Entrenos";
   nav.querySelectorAll("[data-tab]").forEach(b => { const on = b.dataset.tab === actual; b.classList.toggle("on", on); if (on) b.setAttribute("aria-current","page"); else b.removeAttribute("aria-current"); });
   document.getElementById("tabWa").href = waGeneral();
@@ -2029,6 +2071,7 @@ function route(){
   document.body.classList.toggle("vipsr", !!D.sinRutina);
   if (hsh === "vipdieta") viewVipDieta();
   else if (hsh === "cuestionario" && (D.nutricion || D.sinRutina)) viewCuestionario();
+  else if (hsh === "perfil" && !COACH) viewPerfil();
   else if (D.sinRutina) { if (hsh === "nutricion") viewDieta(); else if (hsh === "cuerpo" || hsh === "progreso") viewCuerpo(); else viewVipHome(); }
   else if ((m = hsh.match(/^dia-(\d+)$/))) viewDay(+m[1]);
   else if ((m = hsh.match(/^agujetas-(\d+)$/))) viewDoms(+m[1]);
