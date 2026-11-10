@@ -152,7 +152,15 @@
   .picker svg{flex:0 0 auto;color:var(--acc-txt)}
   .vh-peso{width:100%;display:flex;align-items:center;justify-content:space-between;gap:14px;text-align:left;color:var(--txt);cursor:pointer;margin-top:12px}
   .vh-peso svg{width:46%;height:46px} .vh-kg{font:800 italic 30px 'Barlow Condensed',sans-serif;margin:2px 0}
-  .vd-rec{color:var(--acc-txt,#7fd6d7);font-size:13px;font-weight:600} .vd-auto{margin-top:12px;padding-top:12px;border-top:1px solid var(--line,#24302f)} .vd-sin{border:1px solid var(--line,#2c3a39);background:transparent;color:var(--txt);border-radius:99px;padding:6px 12px;font-size:13px;cursor:pointer} .vd-sin.on{background:#3a1717;border-color:#7a2a2a;color:#ffb4b4} .vd-ajuste{border-color:#11484a;background:#0a2628;margin-top:12px} .vd-g{display:grid;grid-template-columns:1fr 1fr;gap:10px} .vd-g label,.vd-l{display:block;font-size:12.5px;color:var(--mut)} .vd-l{margin-top:10px}
+  .vip-badge{display:inline-flex;align-items:center;gap:4px;padding:5px 12px;border-radius:99px;font-weight:800;font-size:13px;letter-spacing:.06em;color:#2a1d00;background:linear-gradient(135deg,#f7e08a,#d4a531 55%,#f3d36b);box-shadow:0 0 0 1px rgba(255,215,120,.35),0 4px 14px rgba(212,165,49,.25)}
+.vip-card{border:1px solid rgba(212,165,49,.55)!important;background:linear-gradient(160deg,#2a2210,#161a17 70%)!important;margin-top:12px}
+.vip-card p{line-height:1.55;margin:8px 0;font-size:14px}
+.vip-t{font-weight:800;font-size:17px;color:#f3d36b}
+.vip-lock{color:#e8c870;font-size:13px}
+.vip-btn{background:linear-gradient(135deg,#f7e08a,#d4a531)!important;color:#2a1d00!important;font-weight:800}
+.vip-cta{border-color:rgba(212,165,49,.6)!important;background:linear-gradient(160deg,#2a2210,#141816)!important}
+.vip-mini{font-style:normal;font-size:10px;font-weight:800;letter-spacing:.06em;color:#2a1d00;background:#e3bc4f;border-radius:6px;padding:1px 6px;margin-left:6px;vertical-align:2px}
+.vd-rec{color:var(--acc-txt,#7fd6d7);font-size:13px;font-weight:600} .vd-auto{margin-top:12px;padding-top:12px;border-top:1px solid var(--line,#24302f)} .vd-sin{border:1px solid var(--line,#2c3a39);background:transparent;color:var(--txt);border-radius:99px;padding:6px 12px;font-size:13px;cursor:pointer} .vd-sin.on{background:#3a1717;border-color:#7a2a2a;color:#ffb4b4} .vd-ajuste{border-color:#11484a;background:#0a2628;margin-top:12px} .vd-g{display:grid;grid-template-columns:1fr 1fr;gap:10px} .vd-g label,.vd-l{display:block;font-size:12.5px;color:var(--mut)} .vd-l{margin-top:10px}
   .vd-g .txt,.vd-l .txt{margin-top:4px;width:100%;box-sizing:border-box}
   .vd-res{margin-top:12px;padding:10px 12px;border-radius:12px;background:#0a2628;color:#a9e2e3;font-size:14px}
   .vd-n button{flex:1} .vd-com{padding:10px 0;border-top:1px solid var(--line)} .vd-com:first-of-type{border-top:0}
@@ -701,9 +709,9 @@ function viewDieta(){
   pintarDieta(); pide();
 }
 function pintarDieta(){
-  let h = `<button class="back" data-go="inicio">← Volver</button><div class="brand"><h1>Mi dieta</h1><img src="icons/nutricion.svg" alt="" style="width:56px;height:56px"></div>`;
+  let h = `<button class="back" data-go="inicio">← Volver</button><div class="brand"><h1>Mi dieta</h1>${vipBadge() || `<img src="icons/nutricion.svg" alt="" style="width:56px;height:56px">`}</div>`;
   if (!DIE) { app.innerHTML = h + (DIE_ERR ? `<div class="err-box">${esc(DIE_ERR)}</div>` : `<div class="card" style="text-align:center;padding:30px"><div class="spin"></div></div>`); return; }
-  const vipBtn = esVip() && !LECTURA() ? `<button class="cta-checkin" data-go="vipdieta"><span style="font-size:26px">✨</span><span><b>Crear mi dieta</b><small>Elige lo que te apetece y la app calcula los gramos.</small></span></button>` : "";
+  const vipBtn = esVip() && !LECTURA() ? `<button class="cta-checkin vip-cta" data-go="vipdieta"><span style="font-size:26px">✦</span><span><b>Crear mi dieta <em class="vip-mini">VIP</em></b><small>Elige lo que te apetece y la app calcula los gramos.</small></span></button>` : "";
   if (DIE.bloqueada || DIE.sinDieta || !(DIE.comidas || []).length) { app.innerHTML = h + (vipBtn || `<div class="card" style="line-height:1.55">Aitor aún está preparando tu dieta. En cuanto la tenga lista te aparecerá aquí.</div>`); return; }
   h += vipBtn;
   const s = selLeer(), tot = { k: 0, g: 0, p: 0, h: 0 }, ahora = comidaAhora(DIE.comidas.length);
@@ -881,12 +889,26 @@ function pesoMiniHTML(sinAviso){
   if (dias >= 7 && !(sinAviso && ctaCheckin())) h += `<button class="cta-checkin" data-go="cuerpo"><span style="font-size:26px">⚖️</span><span><b>${pesos.length ? "Te toca pesarte" : "Apunta tu primer peso"}</b><small>${pesos.length ? `Hace ${dias} días de tu último registro. ` : ""}Así ves cómo evolucionas.</small></span></button>`;
   return h;
 }
+// ---- Estatus VIP (solo lo ven los VIP; en modo entrenador no) ----
+const esVipYo = () => !!(D && D.vip) && !LECTURA();
+const vipBadge = () => esVipYo() ? `<span class="vip-badge">✦ VIP</span>` : "";
+const VBKEY = () => "entrenaitor_vipbienv_" + CODE;
+function vipBienvenida(){
+  if (!esVipYo()) return "";
+  try { if (localStorage.getItem(VBKEY())) return ""; } catch(e) { return ""; }
+  return `<div class="card vip-card"><div class="vip-t">✦ Tienes acceso VIP</div>
+    <p>Puedes <b>crear tu dieta tú mismo</b> en Nutrición, elegir lo que te gusta y la app calcula los gramos. Y según tu peso, te propondrá ajustarla cuando haga falta.</p>
+    <p class="vip-lock">🔒 Es de uso exclusivo para ti: por favor, no lo enseñes ni compartas tu acceso con nadie.</p>
+    <button class="btn vip-btn" data-vipok="1">Entendido</button></div>`;
+}
+document.addEventListener("click", ev => { const t = ev.target.closest("[data-vipok]"); if (!t) return;
+  try { localStorage.setItem(VBKEY(), "1"); } catch(e) {} const c = t.closest(".vip-card"); if (c) c.remove(); });
 function viewVipHome(){
   const nom = nombreCliente();
   if (DIE_CODE !== CODE) { DIE = dieMapa(dieLeer()); DIE_CODE = CODE; }
   if (!BASC) BASC = leerBasc();
-  let h = `<div class="brand"><div class="logo" style="display:flex;align-items:center;gap:10px"><img src="${LOGO}" alt="" style="width:40px;height:40px;border-radius:10px"><img src="${WM}" alt="Entrenaitor" style="height:24px"></div>${D && D.vip ? `<span class="pill">VIP</span>` : ""}</div>
-    <h1>Hola${nom ? ", " + esc(nom) : ""} 👋</h1>`;
+  let h = `<div class="brand"><div class="logo" style="display:flex;align-items:center;gap:10px"><img src="${LOGO}" alt="" style="width:40px;height:40px;border-radius:10px"><img src="${WM}" alt="Entrenaitor" style="height:24px"></div>${vipBadge()}</div>
+    <h1>Hola${nom ? ", " + esc(nom) : ""} 👋</h1>${vipBienvenida()}`;
   // Ahora toca
   if (DIE && DIE.comidas && DIE.comidas.length) {
     const ci = comidaAhora(DIE.comidas.length), c = DIE.comidas[ci], s = selLeer(), o = Math.min(s.op[ci] || 0, c.op.length - 1), items = s.items[ci + "_" + o] || c.op[o].items, mt = macrosDe(items);
@@ -896,7 +918,7 @@ function viewVipHome(){
       <button class="btn" data-go="nutricion" style="margin-top:10px">Ver mi dieta completa</button></div>`;
   } else h += `<button class="cta-checkin" data-go="nutricion" style="margin-top:12px"><span style="font-size:26px">🍽️</span><span><b>Mi dieta</b><small>${DIE ? "Aitor aún está preparando tu dieta." : "Cargando tu dieta…"}</small></span></button>`;
   const pr = vipPropuesta();
-  if (pr) h += `<div class="card vd-ajuste"><b>${pr.kcal < 0 ? "📉" : "📈"} ${esc(pr.txt)}</b><p class="mut small" style="line-height:1.5;margin:6px 0 10px">Te propongo ${pr.kcal < 0 ? "quitar" : "añadir"} ${Math.abs(pr.kcal)} kcal a tu dieta, sobre todo en hidratos. Recalculo tus gramos y queda guardada.</p><button class="btn" data-vadj="${pr.kcal}">Ajustar mi dieta</button></div>`;
+  if (pr) h += `<div class="card vd-ajuste vip-card"><b>${pr.kcal < 0 ? "📉" : "📈"} ${esc(pr.txt)}</b><p class="mut small" style="line-height:1.5;margin:6px 0 10px">Te propongo ${pr.kcal < 0 ? "quitar" : "añadir"} ${Math.abs(pr.kcal)} kcal a tu dieta, sobre todo en hidratos. Recalculo tus gramos y queda guardada.</p><button class="btn vip-btn" data-vadj="${pr.kcal}">Ajustar mi dieta</button></div>`;
   h += pesoMiniHTML();
   h += `<button class="link" id="salir">Cerrar sesión</button>`;
   app.innerHTML = h;
@@ -956,7 +978,7 @@ function viewVipDieta(){
   dieMapa(DIE); VW = VW && VW._c === CODE ? VW : Object.assign(vwLeer(), { _c: CODE });
   const d = nutriDatos(), r = vipObjetivo(VW), noms = NOMBRES_COM[VW.n];
   const sel = (id, ops, v) => `<select class="txt" id="${id}">${ops.map(([k, t]) => `<option value="${k}" ${String(k) === String(v) ? "selected" : ""}>${esc(t)}</option>`).join("")}</select>`;
-  let h = `<button class="back" data-go="nutricion">← Volver</button><h1>Crear mi dieta</h1>
+  let h = `<button class="back" data-go="nutricion">← Volver</button><div class="brand"><h1>Crear mi dieta</h1>${vipBadge()}</div><div class="vip-lock small" style="margin:-4px 0 10px">🔒 Función exclusiva VIP · No la compartas</div>
   <div id="vd">
   <div class="card"><h2 style="margin:0 0 10px">1. Tus datos</h2>
     <div class="vd-g"><label>Sexo${sel("vd-sexo", [["h", "Hombre"], ["m", "Mujer"]], d.sexo)}</label><label>¿Entrenas fuerza?${sel("vd-ent", [["s", "Sí"], ["n", "No"]], d.entrena)}</label><label>Edad<input class="txt" id="vd-edad" inputmode="numeric" value="${esc(d.edad)}"></label>
@@ -1091,7 +1113,7 @@ const CHEV = '<svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"
 function abrirSheet(abrir){ const el = document.getElementById("prSheet"); if (!el) return; el.hidden = !abrir; document.body.style.overflow = abrir ? "hidden" : "";
   if (abrir) { const on = el.querySelector(".sheet-it.on"); if (on) on.scrollIntoView({ block: "center" }); } }
 function pintarProgreso(){
-  let h = `<div class="brand"><h1>Progreso</h1></div>${segProgreso("fuerza")}
+  let h = `<div class="brand"><h1>Progreso</h1>${vipBadge()}</div>${segProgreso("fuerza")}
   <div class="mut small">Tu RM estimado por semana: el peso que podrías levantar a 1 repetición, calculado con tus series. Nos sirve para ver cómo avanzas y ajustar tu entrenamiento juntos.</div>`;
   if (PROG_ERR) h += `<div class="err-box">${esc(PROG_ERR)}</div>`;
   if (!PROG) { app.innerHTML = h + `<div class="card" style="text-align:center;padding:30px"><div class="spin"></div></div>`; return; }
@@ -1187,7 +1209,7 @@ function viewCuerpo(){
     .catch(e => { BASC_ERR = e.red ? "Sin conexión: mostrando los últimos datos guardados." : e.message; if (location.hash === "#cuerpo") pintarCuerpo(); });
 }
 function pintarCuerpo(){
-  let h = `<div class="brand"><h1>Progreso</h1></div>${segProgreso("cuerpo")}
+  let h = `<div class="brand"><h1>Progreso</h1>${vipBadge()}</div>${segProgreso("cuerpo")}
   <div class="mut small" style="line-height:1.5">Tu evolución semana a semana con los datos de la báscula. Nos sirve para ver si el plan está funcionando y ajustarlo juntos.</div>`;
   if (BASC_ERR) h += `<div class="err-box">${esc(BASC_ERR)}</div>`;
   if (!BASC) { app.innerHTML = h + `<div class="card" style="text-align:center;padding:30px"><div class="spin"></div></div>`; return; }
@@ -1829,8 +1851,8 @@ function viewLogin(msg){
 
 function viewHome(){
   const w = D.semana;
-  let h = `<div class="brand"><div class="logo" style="display:flex;align-items:center;gap:10px"><img src="${LOGO}" alt="" style="width:40px;height:40px;border-radius:10px"><img src="${WM}" alt="Entrenaitor" style="height:24px"></div><span class="pill">Semana ${w}</span></div>
-  <h1>Hola, ${esc(D.cliente.split(" ")[0])} 👋</h1>
+  let h = `<div class="brand"><div class="logo" style="display:flex;align-items:center;gap:10px"><img src="${LOGO}" alt="" style="width:40px;height:40px;border-radius:10px"><img src="${WM}" alt="Entrenaitor" style="height:24px"></div>${esVipYo() ? vipBadge() : `<span class="pill">Semana ${w}</span>`}</div>
+  <h1>Hola, ${esc(D.cliente.split(" ")[0])} 👋</h1>${vipBienvenida()}
   <div class="mut small" style="margin-top:4px">Elige semana y día para entrenar</div>
   ${installHTML()}
   ${cola().length ? `<div class="todo" style="background:#33290f;color:#fcd68a">⏳ Tienes ${cola().length} dato(s) pendientes de enviar. Se mandan solos cuando haya conexión.</div>` : ""}
