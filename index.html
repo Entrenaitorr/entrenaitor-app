@@ -387,6 +387,8 @@
 
 <script>
 var CODIGO_URL = new URLSearchParams(location.search).get("codigo") || "";
+// Calculadora pública (enlace de la web: ?calc=1): sin cuenta, para quien aún no está listo para pagar
+var CALC_PUB = new URLSearchParams(location.search).get("calc") === "1";
 var API_URL = "https://script.google.com/macros/s/AKfycbz2nE5UvZKA6NkE9Xu-ETMJG6c-vfFkFj_DoI2B50C0ijbSUsSNXE-6_o_st3wBZW_JgQ/exec";
 </script>
 <script>
@@ -586,7 +588,7 @@ function nutriResultadoHTML(d){
   if (!r) return `<div class="card"><span class="mut">Rellena edad (18 años o más), peso y altura para ver tus calorías y macros.</span></div>`;
   const tot = r.p * 4 + r.g * 9 + r.h * 4 || 1;
   const fila = (n, gr, kcal, col) => `<div class="macro"><div class="top"><span>${n}</span><span>${gr} g <span class="mut small">· ${fmt0(kcal)} kcal</span></span></div><div class="bar"><i style="width:${Math.round(kcal/tot*100)}%;background:${col}"></i></div></div>`;
-  const msg = `Hola Aitor, soy ${nombreCliente()}. He calculado mis macros en la app (${r.o.t.toLowerCase()}): ${fmt0(r.kcal)} kcal, ${r.p} g proteína, ${r.g} g grasa, ${r.h} g hidratos. Me interesa un plan de nutrición personalizado.`;
+  const msg = `Hola Aitor${nombreCliente() ? ", soy " + nombreCliente() : ""}. He calculado mis números en tu app (${r.o.t.toLowerCase()}): ${fmt0(r.kcal)} kcal, ${r.p} g proteína, ${r.g} g grasa, ${r.h} g hidratos. ¿Cómo llego a ellos comiendo lo que me gusta?`;
   return `<div class="card">
     <div class="mut small" style="letter-spacing:.14em;font-weight:600">TU OBJETIVO DIARIO · ${esc(r.o.t.toUpperCase())}</div>
     <div class="kcal" style="margin:6px 0 14px">${fmt0(r.kcal)}<small>kcal/día</small></div>
@@ -605,9 +607,10 @@ function nutriResultadoHTML(d){
     <p class="mut small" style="line-height:1.5;margin:8px 0 0">Pésate 2-3 mañanas por semana, en ayunas. ${d.obj === "masa" ? "Si en 3 semanas tu peso no sube, añade unas 150 kcal. Si sube más de 1 kg al mes, quita unas 100 kcal." : d.obj === "grasa" ? "Si en 3 semanas tu peso no baja, quita unas 150 kcal. Si bajas más de un 1 % de tu peso por semana, añade unas 100 kcal." : "Si tu peso sube o baja de forma constante durante 3 semanas, ajusta 100-150 kcal."}</p>
   </div>
   <div class="card" style="background:#0a2628;border-color:#11484a">
-    <b style="font-size:17px">¿Quieres un plan de nutrición hecho para ti?</b>
-    <p class="small" style="color:#d6f1f1;line-height:1.5;margin:8px 0 0">Esto es un punto de partida. Con un plan personalizado ajustamos tus comidas, tus horarios y lo que te gusta comer para que llegues a tus números sin pasar hambre.</p>
-    <a class="wa big" href="${esc(waLink(msg))}" target="_blank" rel="noopener" style="background:var(--acc);color:#fff;border-color:var(--acc)">${WA_ICON}Quiero mi plan de nutrición</a>
+    <b style="font-size:17px">Ya tienes tus números. ¿Quieres saber cómo llegar a ellos comiendo lo que te gusta?</b>
+    <p class="small" style="color:#d6f1f1;line-height:1.5;margin:8px 0 0">La calculadora te da el número, pero no cómo aplicarlo. Ahí entro yo: ajustamos tus comidas, tus horarios y lo que te gusta comer para que llegues sin pasar hambre.</p>
+    <a class="wa big" href="${esc(waLink(msg))}" target="_blank" rel="noopener" style="background:var(--acc);color:#fff;border-color:var(--acc)">${WA_ICON}Escríbeme por WhatsApp</a>
+    ${CALC_PUB && !D ? `<a href="https://entrenaitorr.github.io/#precio" style="display:block;text-align:center;margin-top:12px;color:#7fd6d7;font-size:14px;font-weight:600">Ver la asesoría completa →</a>` : ""}
   </div>
   <p class="mut small" style="line-height:1.5">Estimación orientativa para mayores de 18 años. No sustituye el consejo de un profesional sanitario.</p>`;
 }
@@ -1834,6 +1837,11 @@ function ibGuardar(btn){
 }
 
 /* ========== Vistas ========== */
+function viewCalcPublica(){
+  viewNutri();
+  const b = app.querySelector(".back"); if (b) { b.removeAttribute("data-go"); b.id = "calcEntrar"; b.textContent = "← Entrar a la app"; }
+  const sub = app.querySelector(".brand + .mut"); if (sub) sub.textContent = "Calcula gratis tus calorías y macros en 1 minuto. Sin registrarte.";
+}
 function viewLogin(msg){
   app.innerHTML = `<div class="center">
     <img src="${LOGO}" alt="" style="width:120px;height:120px;display:block;margin:0 auto 22px;border-radius:26px">
@@ -2041,6 +2049,7 @@ app.addEventListener("click", ev=>{
     api("invPonerPin", CODE, pin).then(() => { INVITADO.sinPin = false; guardarInv(); toast("PIN guardado"); route(); }).catch(e => { t.disabled = false; toast(e.red ? "Sin conexión" : e.message, true); });
     return; }
   if (t.id === "invVolver") { document.body.classList.remove("onb"); CODE = ""; store.del(); viewLogin(); return; }
+  if (t.id === "calcEntrar") { viewLogin(); return; }
   if (t.id === "invSalir") { salirInvitado(); viewLogin(); return; }
   if (t.dataset.ses && INVITADO) { const x = (INVITADO.sesiones || []).find(z => z.id === t.dataset.ses); if (x) { guardarBorrador(nuevoBorrador(x)); go("inv-entreno"); } return; }
   if (t.dataset.empezar) { empezarDia(t.dataset.empezar); return; }
@@ -2181,7 +2190,7 @@ let toT; function toast(m, err){ const el=document.getElementById("toast"); el.t
 window.addEventListener("hashchange", route);
 { const g = leerInv();
   if (g && (!CODIGO_URL || String(CODIGO_URL).toUpperCase() === g.codigo)) entrarInvitado(g);
-  else if (CODE) cargar(); else viewLogin(); }
+  else if (CODE) cargar(); else if (CALC_PUB) viewCalcPublica(); else viewLogin(); }
 /* Actualización automática: si hay versión nueva, la app se recarga sola
    (salvo si el cliente está apuntando series o agujetas; entonces espera a que salga de esa pantalla). */
 if ("serviceWorker" in navigator) {
